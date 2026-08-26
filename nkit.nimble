@@ -2,7 +2,7 @@
 
 version       = "0.1.0"
 author        = "George Lemon"
-description   = "Unified system APIs across multiple platforms"
+description   = "Unified APIs for Android, iOS, Linux, macOS and Windows"
 license       = "MIT"
 srcDir        = "src"
 bin           = @["nkit"]
