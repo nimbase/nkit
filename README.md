@@ -182,7 +182,7 @@ Platform support:
 | macOS (Cocoa/AppKit) | Done, active development |
 | Windows | Planned |
 | Linux | Planned |
-| iOS | Planned |
+| iOS | active development |
 | Android | Planned |
 
 Planned work:
