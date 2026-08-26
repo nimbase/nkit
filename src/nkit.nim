@@ -9,16 +9,42 @@
 
 when isMainModule:
   import pkg/kapsis
-  import nkit/cli
+  import nkit/cli/commands
 
+  #
+  # Init Kapsis with the commands defined in nkit/cli/commands.nim
+  #
   initKapsis do:
-    commands:
+    commands do:
       -- "Development"
-      run ?string(pkg):
-        ## Build 
-      -- "Bundle & Setup"
-      bundle ?string(pkg):
-        ## Bundle an NimKit project
+      init ?string(name), ?bool("--here"):
+        ## Scaffold nkit.yaml, a nimble file and a starter app
+
+      build any(platform = ["ios", "macos"]), ?any("--pkgr" = ["nimble", "clue"]),
+           ?bool("--release"):
+        ## Produces an .app bundle under build/
+
+      run any(platform = ["ios", "macos"]), ?string(device), ?string("--udid"):
+        ## Targets the booted simulator, or a device by name
+
+      -- "Diagnostics"
+      devices ?bool("--available"):
+        ## List iOS Simulator devices known to Xcode
+
+      -- "Simulator runtimes"
+      runtimes:
+        ## Manage simulator runtimes
+        list:
+          ## Show the runtimes installed on this machine
+        install string(name):
+          ## Download e.g. "iOS 18" or "watchOS 10"
+
+      logs any(platform = ["ios", "macos"]), ?string("--udid"):
+        ## Stream simulator logs for the app process
+
+      clean:
+        ## Remove the build directory
+
 else:
   import nkit/foundation/geometry
   import nkit/foundation/color
@@ -117,7 +143,11 @@ else:
   export popover, split_view, toolbar, animate
   export layout
 
-  when defined(macosx) or defined(ios):
+  when defined(ios):
+    import nkit/platform/ios/uifunctions
+    import nkit/platform/ios/dispatcher_ios
+    export uifunctions, dispatcher_ios
+  elif defined(macosx):
     import nkit/platform/macos/nsfunctions
     import nkit/platform/macos/dispatcher_macos
     export nsfunctions, dispatcher_macos

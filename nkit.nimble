@@ -5,7 +5,10 @@ author        = "George Lemon"
 description   = "Unified system APIs across multiple platforms"
 license       = "MIT"
 srcDir        = "src"
-
+bin           = @["nkit"]
+installDirs   = @["nkit"]
+installExt    = @["nim"]
+binDir        = "bin"
 
 # Dependencies
 
