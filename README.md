@@ -32,7 +32,7 @@ idiomatic Nim surface.
 - Unified system APIs across multiple platforms from a single import
 - Cross-platform desktop and mobile development in pure Nim
 - Based on simple C and Objective-C shims, compiled directly into your binary
-- No dynamic bridge, no FFI generator, no Objective-C runtime reflection
+- No dynamic bridge, no runtime reflection
 - Access to low-level system APIs and bindings when you need full control
 - Native system GUI built on AppKit today, with other platforms on the way
 - Three API tiers so you can pick the right altitude per screen:
