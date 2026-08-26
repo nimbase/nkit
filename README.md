@@ -41,6 +41,23 @@ idiomatic Nim surface.
   that drives native views and stays portable across backends
 - Beautiful macro-based application DSL with state and render blocks
 
+### CLI application
+```
+$ nkit
+
+Development
+  init <?name> ⚑                     Scaffold nkit.yaml, a nimble file and a starter app
+  build <platform> ⚑                 Produces an .app bundle under build/
+  run <platform> <?device> ⚑         Targets the booted simulator, or a device by name
+Diagnostics
+  devices ⚑                          List iOS Simulator devices known to Xcode
+Simulator runtimes
+  runtimes.list                      Show the runtimes installed on this machine
+  runtimes.install <name> ⚑          Download e.g. "iOS 18" or "watchOS 10"
+  logs <platform> ⚑                  Stream simulator logs for the app process
+  clean                              Remove the build directory
+```
+
 ## One app, three APIs
 
 The same counter app, written against each of the three tiers.
