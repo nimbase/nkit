@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nimbase/nkit/main/.github/nkit.png" alt="Nim Kit - Unified system APIs across multiple platforms" width="120px" height="80px"><br>
+  <img src="https://raw.githubusercontent.com/nimbase/nkit/main/.github/nkit.png" alt="Nim Kit - Unified system APIs across multiple platforms" width="80px" height="80px"><br>
   Unified system APIs across multiple platforms<br>
   Android &bullet; iOS &bullet; Linux &bullet; macOS &bullet; Windows
 </p>
