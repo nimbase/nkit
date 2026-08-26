@@ -3,7 +3,10 @@ import nkit/foundation/id_allocator
 import nkit/foundation/event
 import nkit/foundation/event_emitter
 import nkit/gui/view
-import nkit/platform/macos/nsfunctions
+when defined(ios):
+  import nkit/platform/ios/uifunctions
+elif defined(macosx):
+  import nkit/platform/macos/nsfunctions
 
 export view
 

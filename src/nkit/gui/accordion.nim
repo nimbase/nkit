@@ -6,7 +6,10 @@ import nkit/gui/stack
 import nkit/gui/label
 import nkit/gui/theme
 import nkit/gui/hover_router
-import nkit/platform/macos/nsfunctions
+when defined(ios):
+  import nkit/platform/ios/uifunctions
+elif defined(macosx):
+  import nkit/platform/macos/nsfunctions
 
 export view, stack
 
@@ -67,7 +70,7 @@ proc addItem*(acc: Accordion, title: string, contentView: View,
   ## Appends a section. contentHeight of 0 auto-measures the content's
   ## fitting size; pass an explicit height for scrollable or dynamic bodies.
   let headerVid = allocate(typeTagGuiWidget)
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     let hoverPtr = naHoverViewCreate(headerVid.uint32)
   else:
     let hoverPtr: pointer = nil
@@ -175,7 +178,7 @@ proc isSingleOpen*(acc: Accordion): bool =
 
 proc fireHeaderClick*(acc: Accordion, index: int) =
   ## Full-stack test hook.
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     if index >= 0 and index < acc.items.len:
       fireHoverHandler(acc.items[index].header.nativeKey)
 

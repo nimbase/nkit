@@ -4,7 +4,10 @@ import nkit/window
 import nkit/foundation/event
 import nkit/foundation/event_emitter
 import nkit/gui/view
-import nkit/platform/macos/nsfunctions
+when defined(ios):
+  import nkit/platform/ios/uifunctions
+elif defined(macosx):
+  import nkit/platform/macos/nsfunctions
 
 export view
 
@@ -34,14 +37,14 @@ proc newToolbarItemClickedEvent*(ordinal: int): ToolbarItemClickedEvent =
   discard stamp(result)
 
 proc ensureToolbarCallbacks() =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     if not toolbarCallbacksArmed:
       naToolbarSetClickCallback(toolbarClickTrampoline)
       toolbarCallbacksArmed = true
 
 proc attachToolbar*(win: Window): Toolbar =
   ensureToolbarCallbacks()
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     let h = naToolbarAttach(win.id.uint32)
   else:
     let h = int64(0)
@@ -50,7 +53,7 @@ proc attachToolbar*(win: Window): Toolbar =
 proc addItem*(t: Toolbar, label: string, symbolName: string,
               onTap: proc()): int =
   ## Appends an icon item; onTap fires on click. Returns the ordinal.
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     let wid = nextToolbarWidgetId
     inc nextToolbarWidgetId
     if not onTap.isNil:
@@ -69,7 +72,7 @@ proc removeItem*(t: Toolbar, ordinal: int) =
     discard
 
 proc itemCount*(t: Toolbar): int =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     int(naToolbarItemCount(t.handle))
   else:
     0

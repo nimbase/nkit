@@ -3,7 +3,9 @@ import nkit/foundation/event
 import nkit/foundation/event_emitter
 import nkit/gui/view
 
-when defined(macosx) or defined(ios):
+when defined(ios):
+  import nkit/platform/ios/uifunctions
+elif defined(macosx):
   import nkit/platform/macos/nsfunctions
 
 export color
@@ -32,7 +34,7 @@ proc sharedTheme*(): Theme =
   result = sharedThemeInstance
 
 proc ensureThemeCallback(t: Theme) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     if not t.armed:
       naThemeSetChangedCallback(themeChangedTrampoline, cast[pointer](t))
       t.armed = true
@@ -47,7 +49,7 @@ proc triggerAppearanceChanged*() =
   emitAsync(t, newAppearanceChangedEvent())
 
 proc isDarkMode*(): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naThemeIsDark()
   else:
     false

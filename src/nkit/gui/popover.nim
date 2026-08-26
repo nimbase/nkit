@@ -3,7 +3,10 @@ import nkit/foundation/id_allocator
 import nkit/foundation/event
 import nkit/foundation/event_emitter
 import nkit/gui/view
-import nkit/platform/macos/nsfunctions
+when defined(ios):
+  import nkit/platform/ios/uifunctions
+elif defined(macosx):
+  import nkit/platform/macos/nsfunctions
 
 export view
 
@@ -38,14 +41,14 @@ when defined(macosx) or defined(ios):
       emit(p, newPopoverClosedEvent(p.id))
 
 proc ensurePopoverCallbacks() =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     if not popoverCallbacksArmed:
       naPopoverSetCloseCallback(popoverCloseTrampoline)
       popoverCallbacksArmed = true
 
 proc newPopover*(width = 240.0, height = 160.0): Popover =
   ensurePopoverCallbacks()
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     let h = naPopoverCreate()
     let contentPtr = naPopoverContentView(h)
     naPopoverSetSize(h, width, height)
@@ -60,15 +63,15 @@ proc newPopover*(width = 240.0, height = 160.0): Popover =
     popoversLive[h] = result
 
 proc show*(p: Popover, anchor: View, edge: PopoverEdge = peBottom) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naPopoverShow(p.handle, anchor.native, cint(ord(edge)))
 
 proc close*(p: Popover) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naPopoverClose(p.handle)
 
 proc isShown*(p: Popover): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naPopoverIsShown(p.handle)
   else:
     false
@@ -83,7 +86,7 @@ proc fireClosedSimulated*(p: Popover) =
     popoverCloseTrampoline(p.handle, nil)
 
 proc destroy*(p: Popover) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     popoversLive.del(p.handle)
     naPopoverDestroy(p.handle)
   shutdownEmitter[GuiEvent](p)

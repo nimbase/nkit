@@ -2,8 +2,14 @@ import std/monotimes
 import nkit/foundation/event
 import nkit/foundation/event_emitter
 
-when defined(macosx) or defined(ios):
+when defined(ios):
+  import nkit/platform/ios/uifunctions
+elif defined(macosx):
   import nkit/platform/macos/nsfunctions
+when defined(ios):
+  import nkit/platform/ios/dispatcher_ios
+  export dispatcher_ios.ensurePlatformDispatcher
+elif defined(macosx):
   import nkit/platform/macos/dispatcher_macos
   export dispatcher_macos.ensurePlatformDispatcher
 

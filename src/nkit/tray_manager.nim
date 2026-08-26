@@ -8,7 +8,7 @@ type TrayManager* = ref object
 var sharedTrayManagerInstance: TrayManager
 
 proc isSupported*(tm: TrayManager): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     true
   else:
     false
@@ -41,7 +41,7 @@ proc sharedTrayManager*(): TrayManager =
 proc createTray*(tm: TrayManager): TrayIcon =
   result = newTrayIcon()
   tm.objects.add(result.id.uint32, result)
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     if globalTrayClickSink.isNil:
       let manager = tm
       globalTrayClickSink = proc(trayKey: uint32, kind: int) =

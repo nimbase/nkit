@@ -1,6 +1,8 @@
 import nkit/foundation/geometry
 
-when defined(macosx) or defined(ios):
+when defined(ios):
+  import nkit/platform/ios/uifunctions
+elif defined(macosx):
   import nkit/platform/macos/nsfunctions
 
 type Image* = ref object
@@ -13,7 +15,7 @@ proc newImageEmpty(): Image =
   result = Image(handle: 0, source: "", formatValue: "Unknown")
 
 proc fromImageFile*(path: string): Image =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     let handle = naImageFromFile(path.cstring)
     if handle == 0:
       return nil
@@ -29,7 +31,7 @@ proc fromImageFile*(path: string): Image =
     return nil
 
 proc fromBase64*(data: string): Image =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     let handle = naImageFromBase64(data.cstring)
     if handle == 0:
       return nil
@@ -47,7 +49,7 @@ proc fromBase64*(data: string): Image =
     return nil
 
 proc exists*(img: Image): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naImageExists(img.handle)
   else:
     false
@@ -62,23 +64,23 @@ proc getSource*(img: Image): string =
   img.source
 
 proc toBase64*(img: Image): string =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     $naImageToBase64(img.handle)
   else:
     ""
 
 proc saveToFile*(img: Image, path: string): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naImageSaveToFile(img.handle, path.cstring)
   else:
     false
 
 proc free*(img: Image) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naImageDestroy(img.handle)
 
 proc nativePtr*(img: Image): pointer =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naImageNativePtr(img.handle)
   else:
     nil

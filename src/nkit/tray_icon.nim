@@ -5,7 +5,9 @@ import nkit/foundation/id_allocator
 import nkit/image
 import nkit/menu
 
-when defined(macosx) or defined(ios):
+when defined(ios):
+  import nkit/platform/ios/uifunctions
+elif defined(macosx):
   import nkit/platform/macos/nsfunctions
 
 type
@@ -35,7 +37,7 @@ proc newTrayIconEvent*[T: TrayIconEvent](trayId: TrayIconId): T =
 
 var globalTrayClickSink*: proc(trayKey: uint32, kind: int) {.closure.}
 
-when defined(macosx) or defined(ios):
+when defined(macosx) and not defined(ios):
   proc trayEventTrampoline(kind: cint, id: uint32, ctx: pointer) {.cdecl.} =
     if not globalTrayClickSink.isNil:
       globalTrayClickSink(id, int(kind))
@@ -43,7 +45,7 @@ when defined(macosx) or defined(ios):
 var trayCallbacksArmed = false
 
 proc ensureTrayCallbacks*() =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     if not trayCallbacksArmed:
       naTraySetEventCallback(trayEventTrampoline, nil)
       trayCallbacksArmed = true
@@ -58,7 +60,7 @@ type TrayIcon* = ref object of EventEmitter[TrayIconEvent]
 
 proc newTrayIcon*(): TrayIcon =
   ensureTrayCallbacks()
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     let key = naTrayCreate()
     if key != 0:
       ensureMenuCallbacks()
@@ -67,7 +69,7 @@ proc newTrayIcon*(): TrayIcon =
   let tray = TrayIcon(id: key.TrayIconId, nativeKey: key, trigger: cmtNone)
   initEmitter(tray)
   tray.onStartListening = proc() =
-    when defined(macosx) or defined(ios):
+    when defined(macosx) and not defined(ios):
       naTraySetupHandlers(tray.nativeKey)
   result = tray
 
@@ -75,14 +77,14 @@ proc getId*(t: TrayIcon): TrayIconId =
   t.id
 
 proc exists*(t: TrayIcon): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naTrayExists(t.nativeKey)
   else:
     false
 
 proc setIconPath*(t: TrayIcon, path: string) =
   t.iconPath = path
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     if path.len > 0:
       naTraySetIconPath(t.nativeKey, path.cstring)
     else:
@@ -90,39 +92,39 @@ proc setIconPath*(t: TrayIcon, path: string) =
 
 proc clearIcon*(t: TrayIcon) =
   t.iconPath = ""
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naTrayClearIcon(t.nativeKey)
 
 proc setIcon*(t: TrayIcon, img: Image) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naTraySetIconPtr(t.nativeKey, if img.isNil: nil else: img.nativePtr())
 
 proc setTitle*(t: TrayIcon, title: string) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naTraySetTitle(t.nativeKey, title.cstring)
 
 proc getTitle*(t: TrayIcon): string =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     $naTrayGetTitle(t.nativeKey)
   else:
     ""
 
 proc clearTitle*(t: TrayIcon) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naTraySetTitle(t.nativeKey, nil)
 
 proc setTooltip*(t: TrayIcon, tooltip: string) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naTraySetTooltip(t.nativeKey, tooltip.cstring)
 
 proc getTooltip*(t: TrayIcon): string =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     $naTrayGetTooltip(t.nativeKey)
   else:
     ""
 
 proc clearTooltip*(t: TrayIcon) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naTraySetTooltip(t.nativeKey, nil)
 
 proc setContextMenu*(t: TrayIcon, menu: Menu) =
@@ -130,13 +132,13 @@ proc setContextMenu*(t: TrayIcon, menu: Menu) =
     discard t.contextMenuValue.removeListener(t.menuClosedListener)
     t.menuClosedListener = 0
   t.contextMenuValue = menu
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     let menuKey = if menu.isNil: uint32(0) else: menu.nativeKey
     naTraySetContextMenu(t.nativeKey, menuKey)
   if not menu.isNil:
     let selfRef = t
     proc onContextMenuClosed(e: MenuClosedEvent) =
-      when defined(macosx) or defined(ios):
+      when defined(macosx) and not defined(ios):
         if not selfRef.contextMenuValue.isNil:
           naTraySetContextMenu(selfRef.nativeKey, selfRef.contextMenuValue.nativeKey)
     t.menuClosedListener = menu.addListener(onContextMenuClosed)
@@ -145,7 +147,7 @@ proc getContextMenu*(t: TrayIcon): Menu =
   t.contextMenuValue
 
 proc getBounds*(t: TrayIcon): Rectangle =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     var x, y, w, h: float64
     naTrayGetBounds(t.nativeKey, addr x, addr y, addr w, addr h)
     Rectangle(x: x, y: y, width: w, height: h)
@@ -153,25 +155,25 @@ proc getBounds*(t: TrayIcon): Rectangle =
     Rectangle()
 
 proc setVisible*(t: TrayIcon, visible: bool): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naTraySetVisible(t.nativeKey, visible)
   else:
     false
 
 proc isVisible*(t: TrayIcon): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naTrayIsVisible(t.nativeKey)
   else:
     false
 
 proc openContextMenu*(t: TrayIcon): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naTrayOpenContextMenu(t.nativeKey)
   else:
     false
 
 proc closeContextMenu*(t: TrayIcon): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naTrayCloseContextMenu(t.nativeKey)
   else:
     true
@@ -183,7 +185,7 @@ proc getContextMenuTrigger*(t: TrayIcon): ContextMenuTrigger =
   t.trigger
 
 proc free*(t: TrayIcon) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naTrayFree(t.nativeKey)
 
 proc dispatchTrayEvent*(t: TrayIcon, kind: int) =

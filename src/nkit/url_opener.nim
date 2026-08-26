@@ -1,6 +1,8 @@
 import std/strutils
 
-when defined(macosx) or defined(ios):
+when defined(ios):
+  import nkit/platform/ios/uifunctions
+elif defined(macosx):
   import nkit/platform/macos/nsfunctions
 
 type
@@ -27,7 +29,7 @@ proc sharedUrlOpener*(): UrlOpener =
   result = sharedUrlOpenerInstance
 
 proc isSupported*(opener: UrlOpener): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     true
   else:
     false
@@ -60,7 +62,7 @@ proc open*(opener: UrlOpener, url: string): UrlOpenResult =
   let validated = validate(url)
   if not validated.success:
     return validated
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     var errBuf: array[256, char]
     let opened = naUrlOpen(url.cstring, cast[cstring](addr errBuf[0]), cint(errBuf.len))
     if opened:

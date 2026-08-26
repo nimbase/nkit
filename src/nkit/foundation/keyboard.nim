@@ -44,7 +44,7 @@ proc toString*(acc: KeyboardAccelerator): string =
   if m.hasMods(modShift):
     parts.add("Shift")
   if m.hasMods(modMeta):
-    when defined(macosx) or defined(ios):
+    when defined(macosx) and not defined(ios):
       parts.add("Cmd")
     elif defined(windows):
       parts.add("Win")

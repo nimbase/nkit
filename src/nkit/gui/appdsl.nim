@@ -66,12 +66,22 @@ proc genInitApplication(title: NimNode, body: NimNode): NimNode =
 
   result = quote do:
     block:
+      when defined(nkitTrace):
+        proc nlog(msg: string) =
+          let f = open("/tmp/nkit_nim.log", fmAppend)
+          f.writeLine(msg)
+          f.close()
+        nlog("macro: dslCreateWindow start")
       let nbWin {.inject.} = dslCreateWindow(`title`)
+      when defined(nkitTrace): nlog("macro: stateBody start")
       `stateBody`
+      when defined(nkitTrace): nlog("macro: stateBody done, nbBuildUi start")
       proc nbBuildUi(): auto =
         `renderPre`
         `rootWidget`
+      when defined(nkitTrace): nlog("macro: nbBuildUi defined, dslMountAndRun start")
       dslMountAndRun(nbWin, nbBuildUi())
+      when defined(nkitTrace): nlog("macro: dslMountAndRun done")
 
 macro initApp*(title: static string, body: untyped): untyped =
   genInitApplication(newLit(title), body)

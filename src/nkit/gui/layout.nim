@@ -30,11 +30,19 @@ method placeSelf*(n: ViewNode, rect: Rectangle, parentSize: Size) =
   ## Snaps the frame to whole points: solver math (centering, y-flip against
   ## fractional intrinsic heights) produces half-point origins that render
   ## text off the pixel grid and blur it.
-  setFrameRect(n.view,
-    rectangle(round(rect.x),
-              round(parentSize.height - rect.y - rect.height),
-              max(round(rect.width), 1.0),
-              max(round(rect.height), 1.0)))
+  when defined(ios):
+    # iOS UIKit uses top-left origin; no y-flip needed.
+    setFrameRect(n.view,
+      rectangle(round(rect.x),
+                round(rect.y),
+                max(round(rect.width), 1.0),
+                max(round(rect.height), 1.0)))
+  else:
+    setFrameRect(n.view,
+      rectangle(round(rect.x),
+                round(parentSize.height - rect.y - rect.height),
+                max(round(rect.width), 1.0),
+                max(round(rect.height), 1.0)))
 
 proc box(kind: LayoutKind): ViewNode =
   result = ViewNode(view: newPlainView())
@@ -155,7 +163,14 @@ proc layoutIn*(root: ViewNode, parent: View) =
 
 proc installLayout*(win: Window, root: ViewNode) =
   ## Makes the node tree the window's content and keeps it laid out on resize.
+  when defined(nkitTrace):
+    proc llog(msg: string) =
+      let f = open("/tmp/nkit_nim.log", fmAppend)
+      f.writeLine("installLayout: " & msg)
+      f.close()
+    llog("setContent start")
   setContent(win, root.view)
+  when defined(nkitTrace): llog("setContent done")
   proc apply() =
     let cs = win.getContentSize()
     applyLayout(root, cs)

@@ -2,7 +2,9 @@ import nkit/foundation/event_emitter
 import nkit/gui/view
 import nkit/image
 
-when defined(macosx) or defined(ios):
+when defined(ios):
+  import nkit/platform/ios/uifunctions
+elif defined(macosx):
   import nkit/platform/macos/nsfunctions
 
 export view, image

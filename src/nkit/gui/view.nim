@@ -6,7 +6,9 @@ import nkit/foundation/geometry
 import nkit/foundation/color
 import nkit/window
 
-when defined(macosx) or defined(ios):
+when defined(ios):
+  import nkit/platform/ios/uifunctions
+elif defined(macosx):
   import nkit/platform/macos/nsfunctions
 
 type

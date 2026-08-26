@@ -2,7 +2,10 @@ import std/tables
 import nkit/foundation/event
 import nkit/gui/view
 import nkit/gui/hover_router
-import nkit/platform/macos/nsfunctions
+when defined(ios):
+  import nkit/platform/ios/uifunctions
+elif defined(macosx):
+  import nkit/platform/macos/nsfunctions
 
 export view
 
@@ -13,7 +16,7 @@ export view
 var dropHandlers = initTable[uint32, proc(paths: seq[string])]()
 var armed = false
 
-when defined(macosx) or defined(ios):
+when defined(macosx) and not defined(ios):
   proc dropTrampoline(widgetId: cuint, paths: ptr cstring, count: cint,
                       ctx: pointer) {.cdecl.} =
     let handler = dropHandlers.getOrDefault(uint32(widgetId))
@@ -27,7 +30,7 @@ when defined(macosx) or defined(ios):
     handler(files)
 
 proc ensureDropRouter*() =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     if not armed:
       naDropSetEventCallback(dropTrampoline, nil)
       armed = true
@@ -35,18 +38,18 @@ proc ensureDropRouter*() =
 proc enableFileDrop*(v: View, handler: proc(paths: seq[string])) =
   ## Registers the view as a drop target for file URLs.
   ensureDropRouter()
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naViewSetDropEnabled(v.native, true, v.id.uint32)
     dropHandlers[v.id.uint32] = handler
 
 proc disableFileDrop*(v: View) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     naViewSetDropEnabled(v.native, false, v.id.uint32)
     dropHandlers.del(v.id.uint32)
 
 proc simulateFileDrop*(v: View, paths: seq[string]) =
   ## Test hook: feeds paths through the router as if the user dropped them.
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     var cstrs: seq[cstring] = @[]
     for p in paths:
       cstrs.add(p.cstring)

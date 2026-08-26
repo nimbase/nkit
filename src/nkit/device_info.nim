@@ -1,6 +1,8 @@
 import std/posix
 
-when defined(macosx) or defined(ios):
+when defined(ios):
+  import nkit/platform/ios/uifunctions
+elif defined(macosx):
   import nkit/platform/macos/nsfunctions
 
 type DeviceInfo* = ref object

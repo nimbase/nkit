@@ -6,9 +6,14 @@ import nkit/window
 import nkit/window_manager
 import nkit/gui/layout
 import nkit/gui/view
-import nkit/platform/macos/nsfunctions
+when defined(ios):
+  import nkit/platform/ios/uifunctions
+elif defined(macosx):
+  import nkit/platform/macos/nsfunctions
 
-when defined(macosx) or defined(ios):
+when defined(ios):
+  import nkit/platform/ios/dispatcher_ios
+elif defined(macosx):
   import nkit/platform/macos/dispatcher_macos
 
 export view, layout, window, window_manager

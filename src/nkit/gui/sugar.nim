@@ -75,9 +75,18 @@ proc text*(value: string, size: float64): ViewNode =
 
 proc text*(value: string, size: float64, weight: FontWeight): ViewNode =
   ## A text label with a custom font size and weight.
+  when defined(nkitTrace):
+    proc tlog(msg: string) =
+      let f = open("/tmp/nkit_nim.log", fmAppend)
+      f.writeLine("text: " & msg)
+      f.close()
+    tlog("newLabel start")
   let l = newLabel(value)
+  when defined(nkitTrace): tlog("newLabel done, setFontSize")
   l.setFontSize(size)
+  when defined(nkitTrace): tlog("setFontSize done, setFontWeight")
   l.setFontWeight(weight)
+  when defined(nkitTrace): tlog("setFontWeight done, about toNode")
   toNode(l)
 
 proc text*(value: string, size: float64, weight: FontWeight,

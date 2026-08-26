@@ -4,7 +4,9 @@ import nkit/foundation/event_emitter
 import nkit/gui/view
 import nkit/foundation/color
 
-when defined(macosx) or defined(ios):
+when defined(ios):
+  import nkit/platform/ios/uifunctions
+elif defined(macosx):
   import nkit/platform/macos/nsfunctions
 
 export view
@@ -27,15 +29,25 @@ type
   Label* = ref object of View
 
 proc newLabel*(text = ""): Label =
+  when defined(nkitTrace):
+    proc llog(msg: string) =
+      let f = open("/tmp/nkit_nim.log", fmAppend)
+      f.writeLine("label: " & msg)
+      f.close()
+    llog("naLabelCreate start")
   when defined(macosx) or defined(ios):
     let nativePtr = naLabelCreate()
   else:
     let nativePtr: pointer = nil
+  when defined(nkitTrace): llog("naLabelCreate done, wrapView")
   result = Label()
   discard wrapView(result, nativePtr)
+  when defined(nkitTrace): llog("wrapView done")
   when defined(macosx) or defined(ios):
     if text.len > 0:
+      when defined(nkitTrace): llog("naLabelSetText start")
       naLabelSetText(result.native, text.cstring)
+      when defined(nkitTrace): llog("naLabelSetText done")
 
 proc destroy*(l: Label) =
   when defined(macosx) or defined(ios):

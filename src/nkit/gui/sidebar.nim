@@ -11,7 +11,10 @@ import nkit/gui/imageview
 import nkit/gui/badge
 import nkit/gui/theme
 import nkit/gui/hover_router
-import nkit/platform/macos/nsfunctions
+when defined(ios):
+  import nkit/platform/ios/uifunctions
+elif defined(macosx):
+  import nkit/platform/macos/nsfunctions
 
 export view, stack, scroll
 
@@ -40,7 +43,7 @@ proc selectIndex*(sb: Sidebar, index: int) =
   ## Marks the given item selected and emits the selection event.
   if index < 0 or index >= sb.items.len or index == sb.selectedIndexValue:
     return
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     if sb.selectedIndexValue >= 0 and sb.selectedIndexValue < sb.items.len:
       naHoverViewSetSelected(sb.items[sb.selectedIndexValue].native, false)
     naHoverViewSetSelected(sb.items[index].native, true)
@@ -72,7 +75,7 @@ proc addSectionHeader*(sb: Sidebar, title: string): Label =
 
 proc addItem*(sb: Sidebar, title: string, symbolName = "", badgeText = ""): SidebarItem =
   let itemVid = allocate(typeTagGuiWidget)
-  when defined(macosx) or defined(ios):
+  when defined(macosx) and not defined(ios):
     let hoverPtr = naHoverViewCreate(itemVid.uint32)
   else:
     let hoverPtr: pointer = nil

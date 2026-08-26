@@ -1,7 +1,10 @@
 import std/[monotimes, times, math]
 import nkit/gui/view
 import nkit/foundation/dispatcher
-import nkit/platform/macos/dispatcher_macos
+when defined(ios):
+  import nkit/platform/ios/dispatcher_ios
+elif defined(macosx):
+  import nkit/platform/macos/dispatcher_macos
 import nkit/foundation/geometry
 
 export view, geometry

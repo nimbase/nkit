@@ -3,7 +3,9 @@ import nkit/foundation/geometry
 import nkit/foundation/id_allocator
 import nkit/foundation/color
 
-when defined(macosx) or defined(ios):
+when defined(ios):
+  import nkit/platform/ios/uifunctions
+elif defined(macosx):
   import nkit/platform/macos/nsfunctions
 
 type
