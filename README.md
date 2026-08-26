@@ -1,4 +1,5 @@
 <p align="center">
+  <img src="https://raw.githubusercontent.com/nimbase/nkit/main/.github/nkit.png" alt="Nim Kit - Unified system APIs across multiple platforms" width="120px" height="80px"><br>
   Unified system APIs across multiple platforms<br>
   Android &bullet; iOS &bullet; Linux &bullet; macOS &bullet; Windows
 </p>
@@ -45,6 +46,10 @@ idiomatic Nim surface.
 The same counter app, written against each of the three tiers.
 
 ### Low-level: direct control
+You touch exactly what the shim exposes, one call at
+a time. Nothing hides allocation, event registration or geometry from you.
+Best for wrapping your own custom controls, auditing hot paths, or porting
+an existing ObjC/C++ design line by line.
 
 ```nim
 import nkit
@@ -81,12 +86,13 @@ win.show()
 discard app.run()
 ```
 
-**Why pick this tier:** you touch exactly what the shim exposes, one call at
-a time. Nothing hides allocation, event registration or geometry from you.
-Best for wrapping your own custom controls, auditing hot paths, or porting
-an existing ObjC/C++ design line by line.
-
 ### Flutter-style: compositional sugar
+Widgets are values. Constructors like `button`,
+`h1`, `slider`, `card` return nodes that compose into `row`/`column`
+trees laid out by a portable solver with flex, spacing and nine-point
+alignment. Handlers wire at construction, `setText`/`getText` route by
+runtime type, and the whole tree stays backend agnostic. Best for everyday
+screen building where you want structure without ceremony.
 
 ```nim
 import nkit
@@ -125,14 +131,13 @@ win.show()
 discard app.run()
 ```
 
-**Why pick this tier:** widgets are values. Constructors like `button`,
-`h1`, `slider`, `card` return nodes that compose into `row`/`column`
-trees laid out by a portable solver with flex, spacing and nine-point
-alignment. Handlers wire at construction, `setText`/`getText` route by
-runtime type, and the whole tree stays backend agnostic. Best for everyday
-screen building where you want structure without ceremony.
-
 ### Macro DSL: state and render blocks
+The boilerplate disappears. `initApp` creates the
+window, applies your size, runs the render block once, mounts the last
+expression as the root and starts the run loop. State lives in one block,
+UI in another, which keeps screens readable and encourages keeping widget
+references in scope. Best for full applications and quick prototypes that
+should still ship as real native windows.
 
 ```nim
 import nkit/gui/appdsl_cocoa
@@ -163,13 +168,6 @@ initApp("Counter") do:
       all(24.0)
     )
 ```
-
-**Why pick this tier:** the boilerplate disappears. `initApp` creates the
-window, applies your size, runs the render block once, mounts the last
-expression as the root and starts the run loop. State lives in one block,
-UI in another, which keeps screens readable and encourages keeping widget
-references in scope. Best for full applications and quick prototypes that
-should still ship as real native windows.
 
 All three tiers interoperate freely: a DSL app can drop to the low level
 for one tricky view, and low-level apps can adopt sugar constructors
