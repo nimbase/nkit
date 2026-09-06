@@ -216,6 +216,20 @@ proc naInputSetEditable*(viewPtr: pointer, editable: bool) {.
 proc naInputIsEditable*(viewPtr: pointer): bool {.importc: "na_input_is_editable".}
 proc naInputFocus*(widgetId: uint32, viewPtr: pointer) {.importc: "na_input_focus".}
 proc naInputFireChange*(widgetId: uint32) {.importc: "na_input_fire_change".}
+proc naInputFireSubmit*(widgetId: uint32) {.importc: "na_input_fire_submit".}
+
+type NaInputFocusFn* = proc(widgetId: uint32, focused: bool, ctx: pointer) {.cdecl.}
+type NaInputHoverFn* = proc(widgetId: uint32, entered: bool, ctx: pointer) {.cdecl.}
+type NaInputKeyFn* = proc(widgetId: uint32, keyval, keycode, mods: uint32, pressed: bool, ctx: pointer) {.cdecl.}
+
+proc naInputSetFocusCallback*(fn: NaInputFocusFn, ctx: pointer) {.
+  importc: "na_input_set_focus_callback".}
+proc naInputSetHoverCallback*(fn: NaInputHoverFn, ctx: pointer) {.
+  importc: "na_input_set_hover_callback".}
+proc naInputSetKeyCallback*(fn: NaInputKeyFn, ctx: pointer) {.
+  importc: "na_input_set_key_callback".}
+proc naInputFireFocus*(widgetId: uint32, focused: bool) {.importc: "na_input_fire_focus".}
+proc naInputFireHover*(widgetId: uint32, entered: bool) {.importc: "na_input_fire_hover".}
 
 type NaTextAreaEventFn* = proc(widgetId: uint32, ctx: pointer) {.cdecl.}
 

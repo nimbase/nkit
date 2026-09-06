@@ -289,12 +289,103 @@ static void input_changed_cb(GtkWidget *w, gpointer ud) {
   g_input_fn(GPOINTER_TO_UINT(g_object_get_data(G_OBJECT(w), "nkit-id")),
              g_input_ctx);
 }
+static void input_activate_cb(GtkWidget *w, gpointer ud) {
+  (void)ud;
+  if (!g_input_fn) return;
+  g_input_fn(GPOINTER_TO_UINT(g_object_get_data(G_OBJECT(w), "nkit-id")),
+             (void *)1);
+}
+
+// focus
+typedef void (*na_input_focus_fn)(uint32_t id, bool focused, void *ctx);
+static na_input_focus_fn g_focus_fn = NULL;
+static void *g_focus_ctx = NULL;
+void na_input_set_focus_callback(na_input_focus_fn fn, void *ctx) {
+  g_focus_fn = fn; g_focus_ctx = ctx;
+}
+static gboolean input_focus_in_cb(GtkWidget *w, GdkEvent *ev, gpointer ud) {
+  (void)ev; (void)ud;
+  if (g_focus_fn)
+    g_focus_fn(GPOINTER_TO_UINT(g_object_get_data(G_OBJECT(w), "nkit-id")),
+               TRUE, g_focus_ctx);
+  return FALSE;
+}
+static gboolean input_focus_out_cb(GtkWidget *w, GdkEvent *ev, gpointer ud) {
+  (void)ev; (void)ud;
+  if (g_focus_fn)
+    g_focus_fn(GPOINTER_TO_UINT(g_object_get_data(G_OBJECT(w), "nkit-id")),
+               FALSE, g_focus_ctx);
+  return FALSE;
+}
+
+// hover
+typedef void (*na_input_hover_fn)(uint32_t id, bool entered, void *ctx);
+static na_input_hover_fn g_hover_fn = NULL;
+static void *g_hover_ctx = NULL;
+void na_input_set_hover_callback(na_input_hover_fn fn, void *ctx) {
+  g_hover_fn = fn; g_hover_ctx = ctx;
+}
+static gboolean input_enter_cb(GtkWidget *w, GdkEvent *ev, gpointer ud) {
+  (void)ev; (void)ud;
+  if (g_hover_fn)
+    g_hover_fn(GPOINTER_TO_UINT(g_object_get_data(G_OBJECT(w), "nkit-id")),
+               TRUE, g_hover_ctx);
+  return FALSE;
+}
+static gboolean input_leave_cb(GtkWidget *w, GdkEvent *ev, gpointer ud) {
+  (void)ev; (void)ud;
+  if (g_hover_fn)
+    g_hover_fn(GPOINTER_TO_UINT(g_object_get_data(G_OBJECT(w), "nkit-id")),
+               FALSE, g_hover_ctx);
+  return FALSE;
+}
+
+// key
+typedef void (*na_input_key_fn)(uint32_t id, uint32_t keyval, uint32_t keycode,
+                                uint32_t mods, bool pressed, void *ctx);
+static na_input_key_fn g_key_fn = NULL;
+static void *g_key_ctx = NULL;
+void na_input_set_key_callback(na_input_key_fn fn, void *ctx) {
+  g_key_fn = fn; g_key_ctx = ctx;
+}
+static uint32_t gdk_mods_to_nkit(GdkModifierType m) {
+  uint32_t r = 0;
+  if (m & GDK_SHIFT_MASK)   r |= 1u << 0;
+  if (m & GDK_CONTROL_MASK) r |= 1u << 1;
+  if (m & GDK_MOD1_MASK)    r |= 1u << 2;
+  if (m & GDK_SUPER_MASK)   r |= 1u << 3;
+  return r;
+}
+static gboolean input_key_press_cb(GtkWidget *w, GdkEventKey *ev, gpointer ud) {
+  (void)ud;
+  if (g_key_fn)
+    g_key_fn(GPOINTER_TO_UINT(g_object_get_data(G_OBJECT(w), "nkit-id")),
+             ev->keyval, ev->hardware_keycode,
+             gdk_mods_to_nkit(ev->state), TRUE, g_key_ctx);
+  return FALSE;
+}
+static gboolean input_key_release_cb(GtkWidget *w, GdkEventKey *ev, gpointer ud) {
+  (void)ud;
+  if (g_key_fn)
+    g_key_fn(GPOINTER_TO_UINT(g_object_get_data(G_OBJECT(w), "nkit-id")),
+             ev->keyval, ev->hardware_keycode,
+             gdk_mods_to_nkit(ev->state), FALSE, g_key_ctx);
+  return FALSE;
+}
+
 void *na_input_create(uint32_t id, int style) {
   na_linux_ensure_gtk();
   (void)style;
   GtkWidget *e = gtk_entry_new();
   g_object_set_data(G_OBJECT(e), "nkit-id", GUINT_TO_POINTER(id));
   g_signal_connect(e, "changed", G_CALLBACK(input_changed_cb), NULL);
+  g_signal_connect(e, "activate", G_CALLBACK(input_activate_cb), NULL);
+  g_signal_connect(e, "focus-in-event",  G_CALLBACK(input_focus_in_cb), NULL);
+  g_signal_connect(e, "focus-out-event", G_CALLBACK(input_focus_out_cb), NULL);
+  g_signal_connect(e, "enter-notify-event", G_CALLBACK(input_enter_cb), NULL);
+  g_signal_connect(e, "leave-notify-event", G_CALLBACK(input_leave_cb), NULL);
+  g_signal_connect(e, "key-press-event",   G_CALLBACK(input_key_press_cb), NULL);
+  g_signal_connect(e, "key-release-event", G_CALLBACK(input_key_release_cb), NULL);
 #if !NA_GTK4
   gtk_widget_show(e);
 #endif
@@ -337,6 +428,15 @@ void na_input_focus(uint32_t id, void *v) {
 }
 void na_input_fire_change(uint32_t id) {
   if (g_input_fn) g_input_fn(id, g_input_ctx);
+}
+void na_input_fire_submit(uint32_t id) {
+  if (g_input_fn) g_input_fn(id, (void *)1);
+}
+void na_input_fire_focus(uint32_t id, bool focused) {
+  if (g_focus_fn) g_focus_fn(id, focused, g_focus_ctx);
+}
+void na_input_fire_hover(uint32_t id, bool entered) {
+  if (g_hover_fn) g_hover_fn(id, entered, g_hover_ctx);
 }
 
 // ================= textarea (TextView) =================

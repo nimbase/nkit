@@ -449,6 +449,30 @@ proc onSubmitted*(n: ViewNode,
   doAssert n.view of Input, "onSubmitted target is not an input"
   onSubmitted(Input(n.view), handler)
 
+proc onFocus*(n: ViewNode,
+              handler: proc(e: InputFocusEvent)): ListenerId =
+  ## Wires a focus handler on an Input node.
+  doAssert n.view of Input, "onFocus target is not an input"
+  onFocus(Input(n.view), handler)
+
+proc onBlur*(n: ViewNode,
+             handler: proc(e: InputBlurEvent)): ListenerId =
+  ## Wires a blur handler on an Input node.
+  doAssert n.view of Input, "onBlur target is not an input"
+  onBlur(Input(n.view), handler)
+
+proc onHover*(n: ViewNode,
+              handler: proc(e: InputHoverEvent)): ListenerId =
+  ## Wires a hover handler on an Input node.
+  doAssert n.view of Input, "onHover target is not an input"
+  onHover(Input(n.view), handler)
+
+proc onKey*(n: ViewNode,
+            handler: proc(e: InputKeyEvent)): ListenerId =
+  ## Wires a key handler on an Input node.
+  doAssert n.view of Input, "onKey target is not an input"
+  onKey(Input(n.view), handler)
+
 proc onChanged*(n: ViewNode,
                 handler: proc(e: SliderChangedEvent)): ListenerId =
   ## Wires a change handler on a Slider node.
