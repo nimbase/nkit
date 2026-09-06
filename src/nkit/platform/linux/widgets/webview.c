@@ -6,12 +6,12 @@
 #include "gui_common.h"
 #include "na_compat.h"
 
-#if __has_include(<webkit/webkit.h>)
-#  include <webkit/webkit.h>
-#  define NKIT_WEBKIT6 1
-#elif __has_include(<webkit2/webkit2.h>)
+#if __has_include(<webkit2/webkit2.h>)
 #  include <webkit2/webkit2.h>
 #  define NKIT_WEBKIT6 0
+#elif __has_include(<webkit/webkit.h>)
+#  include <webkit/webkit.h>
+#  define NKIT_WEBKIT6 1
 #else
 #  define NKIT_NO_WEBKIT_HEADERS 1
 #endif
@@ -152,12 +152,20 @@ void na_web_context_fetch_data_records(void *ctx,int mask,uint32_t req){
   if(g_data_fn) g_data_fn(req,"[]",g_data_ctx);
 }
 void na_web_context_set_itp_enabled(void *ctx,bool v){
+#if NKIT_WEBKIT6
   if(!ctx) return;
   webkit_web_context_set_itp_enabled((WebKitWebContext*)ctx, v);
+#else
+  (void)ctx; (void)v;
+#endif
 }
 void na_web_context_set_tls_errors_policy(void *ctx,int policy){
+#if NKIT_WEBKIT6
   if(!ctx) return;
   webkit_web_context_set_tls_errors_policy((WebKitWebContext*)ctx, (WebKitTLSErrorsPolicy)policy);
+#else
+  (void)ctx; (void)policy;
+#endif
 }
 void na_web_context_set_data_records_callback(void *fn,void *c){ g_data_fn=(data_fn)fn; g_data_ctx=c; }
 
@@ -174,10 +182,14 @@ const char *na_web_context_cookie_get(void *ctx,const char *url){
   return na_gui_copy_string("");
 }
 void na_web_context_cookie_delete(void *ctx,const char *url,const char *name){
+#if NKIT_WEBKIT6
   if(!ctx||!url||!name) return;
   WebKitCookieManager *cm = webkit_web_context_get_cookie_manager((WebKitWebContext*)ctx);
   SoupCookie *c = soup_cookie_new(name, "", url, "/", -1);
   if(c){ webkit_cookie_manager_delete_cookie(cm, c); soup_cookie_free(c); }
+#else
+  (void)ctx; (void)url; (void)name;
+#endif
 }
 void na_web_context_cookie_get_all(void *ctx,uint32_t req){
   if(!ctx){ if(g_cookie_fn) g_cookie_fn(req,"[]",g_cookie_ctx); return; }
@@ -192,9 +204,14 @@ void na_web_context_set_cookie_accept_policy(void *ctx,int p){
   webkit_cookie_manager_set_accept_policy(cm, (WebKitCookieAcceptPolicy)p);
 }
 int na_web_context_get_cookie_accept_policy(void *ctx){
+#if NKIT_WEBKIT6
   if(!ctx) return 0;
   WebKitCookieManager *cm = webkit_web_context_get_cookie_manager((WebKitWebContext*)ctx);
   return (int)webkit_cookie_manager_get_accept_policy(cm);
+#else
+  (void)ctx;
+  return 0;
+#endif
 }
 void na_web_context_set_persistent_storage_path(void *ctx,const char *path){
   (void)ctx;(void)path;
@@ -214,11 +231,17 @@ static void on_load_changed(WebKitWebView *wv, WebKitLoadEvent ev, gpointer ud){
     case WEBKIT_LOAD_STARTED: kind=1; break;
     case WEBKIT_LOAD_COMMITTED: kind=2; break;
     case WEBKIT_LOAD_FINISHED: kind=3; break;
+#ifdef WEBKIT_LOAD_FAILED
     case WEBKIT_LOAD_FAILED: kind=4; break;
+#endif
     default: break;
   }
   if(kind>=0 && g_nav_fn) g_nav_fn(wid, kind, uri, g_nav_ctx);
+#ifdef WEBKIT_LOAD_FAILED
   if(ev==WEBKIT_LOAD_FINISHED || ev==WEBKIT_LOAD_FAILED){
+#else
+  if(ev==WEBKIT_LOAD_FINISHED){
+#endif
     // also fire progress 1.0
     if(g_prog_fn) g_prog_fn(wid, 1.0, g_prog_ctx);
   }
@@ -299,10 +322,10 @@ static gboolean on_script_dialog(WebKitWebView *wv, WebKitScriptDialog *dlg, gpo
     webkit_script_dialog_close(dlg);
   } else if(kind==1){
     bool ok = ret && (strcmp(ret,"true")==0 || strcmp(ret,"1")==0);
-    webkit_script_dialog_confirm_set_confirmed(WEBKIT_SCRIPT_DIALOG(dlg), ok);
+    webkit_script_dialog_confirm_set_confirmed((WebKitScriptDialog*)dlg, ok);
     webkit_script_dialog_close(dlg);
   } else {
-    webkit_script_dialog_prompt_set_text(WEBKIT_SCRIPT_DIALOG(dlg), ret?ret:"");
+    webkit_script_dialog_prompt_set_text((WebKitScriptDialog*)dlg, ret?ret:"");
     webkit_script_dialog_close(dlg);
   }
   if(ret) free(ret);
@@ -407,7 +430,7 @@ static WebKitWebView *create_wv_with_ctx(uint32_t wid, WebKitWebContext *ctx, bo
   d->scripts=g_hash_table_new_full(g_direct_hash,g_direct_equal,NULL,(GDestroyNotify)NULL);
   d->sheets=g_hash_table_new_full(g_direct_hash,g_direct_equal,NULL,(GDestroyNotify)NULL);
   d->pendingDecisions=g_hash_table_new_full(g_direct_hash,g_direct_equal,NULL,(GDestroyNotify)g_object_unref);
-  d->pendingScheme=g_hash_table_new(g_direct_hash,g_direct_equal,NULL,NULL);
+  d->pendingScheme=g_hash_table_new_full(g_direct_hash,g_direct_equal,NULL,NULL);
   d->nextScriptId=1;
   g_object_set_data_full(G_OBJECT(w),"nkit-webview-data",d,(GDestroyNotify)free);
   g_hash_table_insert(g_views, GUINT_TO_POINTER(wid), d);
@@ -415,6 +438,10 @@ static WebKitWebView *create_wv_with_ctx(uint32_t wid, WebKitWebContext *ctx, bo
   g_object_set_data(G_OBJECT(w),"web-context",ctx);
   // wire signals
   wire_view(w,wv);
+  gtk_widget_set_hexpand(w, TRUE);
+  gtk_widget_set_vexpand(w, TRUE);
+  gtk_widget_set_halign(w, GTK_ALIGN_FILL);
+  gtk_widget_set_valign(w, GTK_ALIGN_FILL);
   // Make view visible and sink
   na_compat_container_add /* not needed */ ;
 #if !NKIT_WEBKIT6
@@ -621,7 +648,13 @@ bool na_webview_is_javascript_can_open_windows(void *ptr){ WebKitSettings *s=get
 void na_webview_set_allows_inline_media_playback(void *ptr,bool v){ WebKitSettings *s=get_settings(ptr); if(s) webkit_settings_set_media_playback_requires_user_gesture(s, !v); }
 bool na_webview_get_allows_inline_media_playback(void *ptr){ WebKitSettings *s=get_settings(ptr); return s?!webkit_settings_get_media_playback_requires_user_gesture(s):false; }
 void na_webview_set_allows_air_play(void *ptr,bool v){ (void)ptr;(void)v; }
-void na_webview_set_allows_picture_in_picture(void *ptr,bool v){ WebKitSettings *s=get_settings(ptr); if(s) webkit_settings_set_enable_picture_in_picture(s,v); }
+void na_webview_set_allows_picture_in_picture(void *ptr,bool v){
+#if NKIT_WEBKIT6
+  WebKitSettings *s=get_settings(ptr); if(s) webkit_settings_set_enable_picture_in_picture(s,v);
+#else
+  (void)ptr;(void)v;
+#endif
+}
 void na_webview_set_media_types_requiring_user_action(void *ptr,int mask){
   WebKitSettings *s=get_settings(ptr); if(!s) return;
   bool audio = (mask & 1)!=0;
@@ -680,6 +713,7 @@ void na_webview_set_enable_back_forward_nav_gestures(void *ptr,bool v){ WebKitSe
 static WebKitUserContentManager *get_ucm(void *ptr){
   return ptr?webkit_web_view_get_user_content_manager(WEBKIT_WEB_VIEW(ptr)):NULL;
 }
+uint32_t na_webview_add_user_script_with_world(void *ptr,const char *src,int inj,bool mainOnly,const char *world);
 uint32_t na_webview_add_user_script(void *ptr,const char *src,int inj,bool mainOnly){
   return na_webview_add_user_script_with_world(ptr,src,inj,mainOnly,NULL);
 }
@@ -689,7 +723,7 @@ uint32_t na_webview_add_user_script_with_world(void *ptr,const char *src,int inj
   WebViewData *d=data_of((GtkWidget*)ptr);
   if(!ucm||!d) return 0;
   WebKitUserContentInjectedFrames frames = mainOnly?WEBKIT_USER_CONTENT_INJECT_TOP_FRAME:WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES;
-  WebKitUserScriptInjectionTime t = (inj==0)?WEBKIT_USER_SCRIPT_START:WEBKIT_USER_SCRIPT_END;
+  WebKitUserScriptInjectionTime t = (inj==0)?WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START:WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_END;
   WebKitUserScript *script = webkit_user_script_new(src, frames, t, NULL, NULL);
   webkit_user_content_manager_add_script(ucm, script);
   uint32_t id=d->nextScriptId++;
@@ -768,6 +802,7 @@ void na_webview_remove_all_script_message_handlers(void *ptr){
 }
 
 // ── JS eval ──
+void na_webview_evaluate_javascript_with_world(void *ptr,const char *script,const char *world,uint32_t req);
 void na_webview_evaluate_javascript(void *ptr,const char *script,uint32_t req){
   na_webview_evaluate_javascript_with_world(ptr,script,NULL,req);
 }
@@ -911,39 +946,46 @@ static void pdf_done(WebKitPrintOperation *op, GError *err, gpointer ud){
 }
 void na_webview_print_to_pdf(void *ptr,const char *path,uint32_t req){
   if(!ptr||!path) return;
+#if NKIT_WEBKIT6
   WebKitPrintOperation *op=webkit_print_operation_new(WEBKIT_WEB_VIEW(ptr));
   g_object_set_data(G_OBJECT(op),"nk-view",ptr);
   webkit_print_operation_print_to_file(op, path, NULL, (GAsyncReadyCallback)pdf_done, GUINT_TO_POINTER(req));
-  // op kept alive by print operation itself
+#else
+  (void)ptr; (void)path; (void)req;
+  if(g_pdf_fn) g_pdf_fn(wid_of((GtkWidget*)ptr), req, true, g_pdf_ctx);
+#endif
 }
 void na_webview_set_pdf_callback(void *fn,void *ctx){ g_pdf_fn=(pdf_fn)fn; g_pdf_ctx=ctx; }
 static void snap_done(GObject *obj,GAsyncResult *res,gpointer ud){
   uint32_t req=GPOINTER_TO_UINT(ud);
   GError *err=NULL;
-  GdkPixbuf *pix=NULL;
 #if NKIT_WEBKIT6
-  pix=webkit_web_view_get_snapshot_finish(WEBKIT_WEB_VIEW(obj), res, &err);
-#else
-  // 4.1: webkit_web_view_get_snapshot_finish exists as well
-  pix=webkit_web_view_get_snapshot_finish(WEBKIT_WEB_VIEW(obj), res, &err);
-#endif
-  // Need wid
+  GdkTexture *tex = webkit_web_view_get_snapshot_finish(WEBKIT_WEB_VIEW(obj), res, &err);
   GtkWidget *w=GTK_WIDGET(obj);
   uint32_t wid=wid_of(w);
   int64_t handle=0;
-  if(pix){
-    // store pixbuf as image handle? Use na_image_from_pixbuf? For now return 0 and store globally?
-    // Create an image handle via na_image_*? Instead store pixbuf pointer as handle (cast)
-    handle=(int64_t)(intptr_t)g_object_ref(pix);
-    g_object_unref(pix);
+  if(tex){
+    handle=(int64_t)(intptr_t)g_object_ref(tex);
+    g_object_unref(tex);
   }
   if(g_snap_fn) g_snap_fn(wid,req,handle,g_snap_ctx);
   if(err) g_error_free(err);
+#else
+  cairo_surface_t *surf = webkit_web_view_get_snapshot_finish(WEBKIT_WEB_VIEW(obj), res, &err);
+  GtkWidget *w=GTK_WIDGET(obj);
+  uint32_t wid=wid_of(w);
+  int64_t handle=0;
+  if(surf){
+    handle=(int64_t)(intptr_t)cairo_surface_reference(surf);
+    cairo_surface_destroy(surf);
+  }
+  if(g_snap_fn) g_snap_fn(wid,req,handle,g_snap_ctx);
+  if(err) g_error_free(err);
+#endif
 }
 void na_webview_snapshot(void *ptr,uint32_t req){
   if(!ptr) return;
-  WebKitSnapshotOptions opts=WEBKIT_SNAPSHOT_REGION_VISIBLE;
-  webkit_web_view_get_snapshot(WEBKIT_WEB_VIEW(ptr), opts, snap_done, GUINT_TO_POINTER(req));
+  webkit_web_view_get_snapshot(WEBKIT_WEB_VIEW(ptr), WEBKIT_SNAPSHOT_REGION_VISIBLE, WEBKIT_SNAPSHOT_OPTIONS_NONE, NULL, snap_done, GUINT_TO_POINTER(req));
 }
 void na_webview_snapshot_rect(void *ptr,double x,double y,double w,double h,uint32_t req){
   (void)x;(void)y;(void)w;(void)h;

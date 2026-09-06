@@ -10,13 +10,13 @@
 {.compile: "widgets/controls.c".}
 {.compile: "widgets/services.c".}
 {.compile: "widgets/theme_info.c".}
-{.passc: staticExec("pkg-config --cflags gtk4 2>/dev/null || pkg-config --cflags gtk+-3.0 2>/dev/null").}
-{.passl: staticExec("pkg-config --libs gtk4 2>/dev/null || pkg-config --libs gtk+-3.0 2>/dev/null").}
+{.passc: staticExec("pkg-config --cflags gtk+-3.0 2>/dev/null || pkg-config --cflags gtk4 2>/dev/null").}
+{.passl: staticExec("pkg-config --libs gtk+-3.0 2>/dev/null || pkg-config --libs gtk4 2>/dev/null").}
 
 when defined(webkit):
   {.compile: "widgets/webview.c".}
-  {.passc: staticExec("pkg-config --cflags webkitgtk-6.0 2>/dev/null || pkg-config --cflags webkit2gtk-4.1 2>/dev/null || pkg-config --cflags webkit2gtk-4.0 2>/dev/null").}
-  {.passl: staticExec("pkg-config --libs webkitgtk-6.0 2>/dev/null || pkg-config --libs webkit2gtk-4.1 2>/dev/null || pkg-config --libs webkit2gtk-4.0 2>/dev/null").}
+  {.passc: staticExec("pkg-config --cflags webkit2gtk-4.1 2>/dev/null || pkg-config --cflags webkitgtk-6.0 2>/dev/null || pkg-config --cflags webkit2gtk-4.0 2>/dev/null").}
+  {.passl: staticExec("pkg-config --libs webkit2gtk-4.1 2>/dev/null || pkg-config --libs webkitgtk-6.0 2>/dev/null || pkg-config --libs webkit2gtk-4.0 2>/dev/null").}
 else:
   {.compile: "widgets/webview_stubs.c".}
 

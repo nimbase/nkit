@@ -50,15 +50,12 @@ static WinState *find_win(uint32_t id) {
 }
 
 static GtkWidget *make_root_container(void) {
-#if NA_GTK4
   GtkWidget *f = gtk_fixed_new();
   gtk_widget_set_hexpand(f, TRUE);
   gtk_widget_set_vexpand(f, TRUE);
+  gtk_widget_set_halign(f, GTK_ALIGN_FILL);
+  gtk_widget_set_valign(f, GTK_ALIGN_FILL);
   return f;
-#else
-  GtkWidget *f = gtk_fixed_new();
-  return f;
-#endif
 }
 
 uint32_t na_window_create(void) {
@@ -67,6 +64,8 @@ uint32_t na_window_create(void) {
   GtkApplication *app = na_linux_gtk_app();
   GtkWidget *win = na_compat_window_new(app);
   gtk_window_set_default_size(GTK_WINDOW(win), 400, 300);
+  gtk_widget_set_size_request(win, 1, 1);
+  gtk_window_set_resizable(GTK_WINDOW(win), TRUE);
   GtkWidget *root = make_root_container();
 #if NA_GTK4
   gtk_window_set_child(GTK_WINDOW(win), root);
@@ -222,7 +221,6 @@ void na_window_set_bounds(uint32_t id, double x, double y, double w, double h) {
   WinState *st = find_win(id);
   if (!st) return;
   st->x = x; st->y = y; st->w = w; st->h = h;
-  gtk_window_set_default_size(GTK_WINDOW(st->win), (int)w, (int)h);
 #if !NA_GTK4
   gtk_window_move(GTK_WINDOW(st->win), (int)x, (int)y);
   gtk_window_resize(GTK_WINDOW(st->win), (int)w, (int)h);
@@ -241,7 +239,6 @@ void na_window_set_size(uint32_t id, double w, double h, bool animate) {
   WinState *st = find_win(id);
   if (!st) return;
   st->w = w; st->h = h;
-  gtk_window_set_default_size(GTK_WINDOW(st->win), (int)w, (int)h);
 #if !NA_GTK4
   gtk_window_resize(GTK_WINDOW(st->win), (int)w, (int)h);
 #endif
@@ -503,14 +500,14 @@ void na_window_set_root_view(uint32_t id, void *view_ptr) {
   GtkWidget *root = (GtkWidget *)view_ptr;
   if (!st || !root || !st->root) return;
   GtkWidget *container = st->root;
-  // Clear previous content
   na_view_remove_all((void*)container);
-  // Make root fill the window content area (400x300 etc)
   NkitViewState *rst = nkit_state_of(root);
   rst->x = 0; rst->y = 0; rst->w = st->w; rst->h = st->h;
-  gtk_widget_set_size_request(root, (int)st->w, (int)st->h);
+  gtk_widget_set_hexpand(root, TRUE);
+  gtk_widget_set_vexpand(root, TRUE);
+  gtk_widget_set_halign(root, GTK_ALIGN_FILL);
+  gtk_widget_set_valign(root, GTK_ALIGN_FILL);
+  gtk_widget_set_size_request(root, -1, -1);
   na_view_add_subview((void*)container, root);
-  // Ensure fill for fixed container (bottom origin y=0 -> top 0)
-  // na_view_constrain_fill will handle, but we already set size
   gtk_widget_queue_resize(container);
 }

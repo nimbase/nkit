@@ -4,6 +4,11 @@
 #include <string.h>
 #include "gui_common.h"
 #include "na_compat.h"
+#if __has_include(<webkit2/webkit2.h>)
+#include <webkit2/webkit2.h>
+#elif __has_include(<webkit/webkit.h>)
+#include <webkit/webkit.h>
+#endif
 
 void na_view_measure(void *view_ptr, double max_w, double max_h, double *ow, double *oh);
 
