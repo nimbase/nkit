@@ -1,15 +1,17 @@
-import nkit/foundation/id_allocator
-import nkit/foundation/event
-import nkit/foundation/event_emitter
-import nkit/gui/view
-import nkit/gui/stack
-import nkit/gui/label
-import nkit/gui/theme
-import nkit/gui/hover_router
+import ../foundation/id_allocator
+import ../foundation/event
+import ../foundation/event_emitter
+import ./view
+import ./stack
+import ./label
+import ./theme
+import ./hover_router
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ../platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ../platform/macos/nsfunctions
+elif defined(linux):
+  import ../platform/linux/gfunctions
 
 export view, stack
 
@@ -57,7 +59,7 @@ proc newAccordion*(singleOpen = true): Accordion =
   let base = newPlainView()
   discard wrapView(result, base.native, vid)
 
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     let root = newStack(stVertical, spacing = 4.0)
     result.root = root
     addSubview(result, View(root))
@@ -70,7 +72,7 @@ proc addItem*(acc: Accordion, title: string, contentView: View,
   ## Appends a section. contentHeight of 0 auto-measures the content's
   ## fitting size; pass an explicit height for scrollable or dynamic bodies.
   let headerVid = allocate(typeTagGuiWidget)
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     let hoverPtr = naHoverViewCreate(headerVid.uint32)
   else:
     let hoverPtr: pointer = nil
@@ -82,7 +84,7 @@ proc addItem*(acc: Accordion, title: string, contentView: View,
   var entry = AccordionEntry(header: header, body: nil, expanded: false,
                              fixedHeight: contentHeight)
 
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     let row = newStack(stHorizontal, spacing = 8.0)
     row.setPadding(10.0, 7.0, 10.0, 7.0)
     row.setAlignment(saLeading)
@@ -132,7 +134,7 @@ proc setExpanded*(acc: Accordion, index: int, expanded: bool) =
     return
   if acc.items[index].expanded == expanded:
     return
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     if expanded and acc.singleOpenValue:
       for i in 0 ..< acc.items.len:
         if i != index and acc.items[i].expanded:
@@ -178,7 +180,7 @@ proc isSingleOpen*(acc: Accordion): bool =
 
 proc fireHeaderClick*(acc: Accordion, index: int) =
   ## Full-stack test hook.
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     if index >= 0 and index < acc.items.len:
       fireHoverHandler(acc.items[index].header.nativeKey)
 

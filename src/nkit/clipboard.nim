@@ -1,9 +1,11 @@
-import nkit/foundation/geometry
+import ./foundation/geometry
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ./platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
-import nkit/image
+  import ./platform/macos/nsfunctions
+elif defined(linux):
+  import ./platform/linux/gfunctions
+import ./image
 
 type Clipboard* = ref object
 
@@ -11,35 +13,35 @@ proc sharedClipboard*(): Clipboard =
   Clipboard()
 
 proc setClipboardText*(c: Clipboard, text: string) =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naClipboardSetText(text.cstring)
 
 proc getClipboardText*(c: Clipboard): string =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     let value = naClipboardGetText()
     if not value.isNil:
       result = $value
       naClipboardFreeString(value)
 
 proc clearClipboard*(c: Clipboard) =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naClipboardClear()
 
 func clipboardChangeCount*(c: Clipboard): int =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     int(naClipboardChangeCount())
   else:
     0
 
 proc setClipboardImage*(c: Clipboard, img: Image) =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     if img != nil and img.exists():
       naClipboardSetImageHandle(img.handle)
     else:
       naClipboardClear()
 
 proc getClipboardImage*(c: Clipboard): Image =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     var w, h: float64
     let handle = naClipboardGetImageHandle()
     if handle == 0:
@@ -51,7 +53,7 @@ proc getClipboardImage*(c: Clipboard): Image =
     nil
 
 proc setClipboardFiles*(c: Clipboard, paths: seq[string]) =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     if paths.len == 0:
       naClipboardClear()
       return
@@ -61,7 +63,7 @@ proc setClipboardFiles*(c: Clipboard, paths: seq[string]) =
     naClipboardSetFilePaths(addr cstrs[0], cint(paths.len))
 
 proc getClipboardFiles*(c: Clipboard): seq[string] =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     var count: cint = 0
     let list = naClipboardGetFilePaths(addr count)
     if not list.isNil and count > 0:

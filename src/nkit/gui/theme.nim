@@ -1,12 +1,14 @@
-import nkit/foundation/color
-import nkit/foundation/event
-import nkit/foundation/event_emitter
-import nkit/gui/view
+import ../foundation/color
+import ../foundation/event
+import ../foundation/event_emitter
+import ./view
 
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ../platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ../platform/macos/nsfunctions
+elif defined(linux):
+  import ../platform/linux/gfunctions
 
 export color
 
@@ -34,7 +36,7 @@ proc sharedTheme*(): Theme =
   result = sharedThemeInstance
 
 proc ensureThemeCallback(t: Theme) =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     if not t.armed:
       naThemeSetChangedCallback(themeChangedTrampoline, cast[pointer](t))
       t.armed = true
@@ -49,7 +51,7 @@ proc triggerAppearanceChanged*() =
   emitAsync(t, newAppearanceChangedEvent())
 
 proc isDarkMode*(): bool =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naThemeIsDark()
   else:
     false
@@ -60,7 +62,7 @@ template themeColorGetter(name: untyped, getter: untyped) =
     getter(addr r, addr g, addr b, addr a)
     Color(r: r, g: g, b: b, a: a)
 
-when defined(macosx) or defined(ios):
+when defined(macosx) or defined(ios) or defined(linux):
   themeColorGetter(accentColor, naThemeAccentColor)
   themeColorGetter(labelColor, naThemeLabelColor)
   themeColorGetter(secondaryLabelColor, naThemeSecondaryLabelColor)

@@ -1,10 +1,10 @@
 import std/tables
-import nkit/foundation/id_allocator
-import nkit/foundation/event
-import nkit/foundation/event_emitter
-import nkit/gui/view
-import nkit/gui/stack
-import nkit/gui/segmented
+import ../foundation/id_allocator
+import ../foundation/event
+import ../foundation/event_emitter
+import ./view
+import ./stack
+import ./segmented
 
 export view, stack, segmented
 
@@ -34,7 +34,7 @@ proc currentPage*(t: Tabs): int =
 proc selectPage*(t: Tabs, index: int) =
   if index == t.currentIndexValue:
     return
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     if t.currentIndexValue >= 0 and t.pages.hasKey(t.currentIndexValue):
       setHidden(t.pages[t.currentIndexValue], true)
     if t.pages.hasKey(index):
@@ -49,7 +49,7 @@ proc selectPage*(t: Tabs, index: int) =
 
 proc addPage*(t: Tabs, index: int, page: View, showNow = false) =
   t.pages[index] = page
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     setHidden(page, true)
   if showNow:
     selectPage(t, index)
@@ -60,7 +60,7 @@ proc newTabs*(labels: openArray[string]): Tabs =
   discard wrapView(result, base.native, base.id)
   liveTabs[base.id.uint32] = result
 
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     let layout = newStack(stVertical, spacing = 8.0)
     result.layout = layout
     addSubview(result, View(layout))

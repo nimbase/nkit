@@ -9,7 +9,7 @@
 
 when isMainModule:
   import pkg/kapsis
-  import nkit/cli/commands
+  import ./nkit/cli/commands
 
   #
   # Init Kapsis with the commands defined in nkit/cli/commands.nim
@@ -20,11 +20,11 @@ when isMainModule:
       init ?string(name), ?bool("--here"):
         ## Scaffold nkit.yaml, a nimble file and a starter app
 
-      build any(platform = ["ios", "macos"]), ?any("--pkgr" = ["nimble", "clue"]),
+      build any(platform = ["ios", "macos", "linux"]), ?any("--pkgr" = ["nimble", "clue"]),
            ?bool("--release"):
-        ## Produces an .app bundle under build/
+        ## Produces an .app bundle under build/ (plain binary for linux)
 
-      run any(platform = ["ios", "macos"]), ?string(device), ?string("--udid"):
+      run any(platform = ["ios", "macos", "linux"]), ?string(device), ?string("--udid"):
         ## Targets the booted simulator, or a device by name
 
       -- "Diagnostics"
@@ -39,84 +39,85 @@ when isMainModule:
         install string(name):
           ## Download e.g. "iOS 18" or "watchOS 10"
 
-      logs any(platform = ["ios", "macos"]), ?string("--udid"):
+      logs any(platform = ["ios", "macos", "linux"]), ?string("--udid"):
         ## Stream simulator logs for the app process
 
       clean:
         ## Remove the build directory
 
 else:
-  import nkit/foundation/geometry
-  import nkit/foundation/color
-  import nkit/foundation/keyboard
-  import nkit/foundation/event
-  import nkit/foundation/dispatcher
-  import nkit/foundation/id_allocator
-  import nkit/foundation/object_registry
-  import nkit/foundation/event_emitter
-  import nkit/placement
-  import nkit/positioning_strategy
-  import nkit/application
-  import nkit/window
-  import nkit/window_registry
-  import nkit/window_manager
-  import nkit/display
-  import nkit/display_manager
-  import nkit/app_info
-  import nkit/device_info
-  import nkit/url_opener
-  import nkit/storage
-  import nkit/preferences
-  import nkit/secure_storage
-  import nkit/accessibility_manager
-  import nkit/launch_at_login
-  import nkit/dialog
-  import nkit/message_dialog
-  import nkit/menu
-  import nkit/tray_icon
-  import nkit/tray_manager
-  import nkit/image
-  import nkit/keyboard_monitor
-  import nkit/mouse_monitor
-  import nkit/clipboard
-  import nkit/file_dialog
-  import nkit/alert
-  import nkit/drag_drop
-  import nkit/notifications
-  import nkit/shortcut
-  import nkit/shortcut_manager
-  import nkit/gui/view
-  import nkit/gui/theme
-  import nkit/gui/button
-  import nkit/gui/label
-  import nkit/gui/separator
-  import nkit/gui/input
-  import nkit/gui/textarea
-  import nkit/gui/switch_widget
-  import nkit/gui/slider
-  import nkit/gui/progress
-  import nkit/gui/segmented
-  import nkit/gui/select
-  import nkit/gui/datepicker
-  import nkit/gui/imageview
-  import nkit/gui/stack
-  import nkit/gui/scroll
-  import nkit/gui/card
-  import nkit/gui/badge
-  import nkit/gui/tabs
-  import nkit/gui/avatar
-  import nkit/gui/accordion
-  import nkit/gui/appdsl
-  import nkit/gui/appdsl_cocoa
-  import nkit/gui/hover_router
-  import nkit/gui/sidebar
-  import nkit/gui/sugar
-  import nkit/gui/toast
-  import nkit/gui/layout
-  import nkit/gui/popover
-  import nkit/gui/split_view
-  import nkit/gui/toolbar
-  import nkit/gui/animate
+  import ./nkit/foundation/geometry
+  import ./nkit/foundation/color
+  import ./nkit/foundation/keyboard
+  import ./nkit/foundation/event
+  import ./nkit/foundation/dispatcher
+  import ./nkit/foundation/id_allocator
+  import ./nkit/foundation/object_registry
+  import ./nkit/foundation/event_emitter
+  import ./nkit/placement
+  import ./nkit/positioning_strategy
+  import ./nkit/application
+  import ./nkit/window
+  import ./nkit/window_registry
+  import ./nkit/window_manager
+  import ./nkit/display
+  import ./nkit/display_manager
+  import ./nkit/app_info
+  import ./nkit/device_info
+  import ./nkit/url_opener
+  import ./nkit/storage
+  import ./nkit/preferences
+  import ./nkit/secure_storage
+  import ./nkit/accessibility_manager
+  import ./nkit/launch_at_login
+  import ./nkit/dialog
+  import ./nkit/message_dialog
+  import ./nkit/menu
+  import ./nkit/tray_icon
+  import ./nkit/tray_manager
+  import ./nkit/image
+  import ./nkit/keyboard_monitor
+  import ./nkit/mouse_monitor
+  import ./nkit/clipboard
+  import ./nkit/file_dialog
+  import ./nkit/alert
+  import ./nkit/drag_drop
+  import ./nkit/notifications
+  import ./nkit/shortcut
+  import ./nkit/shortcut_manager
+  import ./nkit/gui/view
+  import ./nkit/gui/theme
+  import ./nkit/gui/button
+  import ./nkit/gui/label
+  import ./nkit/gui/separator
+  import ./nkit/gui/input
+  import ./nkit/gui/textarea
+  import ./nkit/gui/switch_widget
+  import ./nkit/gui/slider
+  import ./nkit/gui/progress
+  import ./nkit/gui/segmented
+  import ./nkit/gui/select
+  import ./nkit/gui/datepicker
+  import ./nkit/gui/imageview
+  import ./nkit/gui/stack
+  import ./nkit/gui/scroll
+  import ./nkit/gui/card
+  import ./nkit/gui/badge
+  import ./nkit/gui/tabs
+  import ./nkit/gui/avatar
+  import ./nkit/gui/accordion
+  import ./nkit/gui/appdsl
+  import ./nkit/gui/appdsl_cocoa
+  import ./nkit/gui/appdsl_gtk
+  import ./nkit/gui/hover_router
+  import ./nkit/gui/sidebar
+  import ./nkit/gui/sugar
+  import ./nkit/gui/toast
+  import ./nkit/gui/layout
+  import ./nkit/gui/popover
+  import ./nkit/gui/split_view
+  import ./nkit/gui/toolbar
+  import ./nkit/gui/animate
 
   export geometry, color, keyboard, event, dispatcher
   export id_allocator, object_registry, event_emitter
@@ -138,16 +139,21 @@ else:
   export progress, segmented, select, datepicker, imageview
   export stack, scroll, card, badge, tabs, avatar
   export accordion
+  export appdsl_gtk
   export hover_router
   export sidebar, sugar, toast
   export popover, split_view, toolbar, animate
   export layout
 
   when defined(ios):
-    import nkit/platform/ios/uifunctions
-    import nkit/platform/ios/dispatcher_ios
+    import ./nkit/platform/ios/uifunctions
+    import ./nkit/platform/ios/dispatcher_ios
     export uifunctions, dispatcher_ios
   elif defined(macosx):
-    import nkit/platform/macos/nsfunctions
-    import nkit/platform/macos/dispatcher_macos
+    import ./nkit/platform/macos/nsfunctions
+    import ./nkit/platform/macos/dispatcher_macos
     export nsfunctions, dispatcher_macos
+  elif defined(linux):
+    import ./nkit/platform/linux/gfunctions
+    import ./nkit/platform/linux/dispatcher_linux
+    export gfunctions, dispatcher_linux

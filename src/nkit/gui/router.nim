@@ -1,10 +1,10 @@
 import std/[tables, strutils, parseutils, uri, sequtils]
 import pkg/openparser/regex
-import nkit/foundation/geometry
-import nkit/gui/layout
-import nkit/gui/view
-import nkit/gui/split_view
-import nkit/gui/label
+import ../foundation/geometry
+import ./layout
+import ./view
+import ./split_view
+import ./label
 
 export layout, view, split_view
 

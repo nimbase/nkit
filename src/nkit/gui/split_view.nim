@@ -1,20 +1,24 @@
 import std/[tables]
-import nkit/foundation/event_emitter
-import nkit/foundation/event
-import nkit/foundation/id_allocator
-import nkit/window
-import nkit/window_manager
-import nkit/gui/layout
-import nkit/gui/view
+import ../foundation/event_emitter
+import ../foundation/event
+import ../foundation/id_allocator
+import ../window
+import ../window_manager
+import ./layout
+import ./view
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ../platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ../platform/macos/nsfunctions
+elif defined(linux):
+  import ../platform/linux/gfunctions
 
 when defined(ios):
-  import nkit/platform/ios/dispatcher_ios
+  import ../platform/ios/dispatcher_ios
 elif defined(macosx):
-  import nkit/platform/macos/dispatcher_macos
+  import ../platform/macos/dispatcher_macos
+elif defined(linux):
+  import ../platform/linux/dispatcher_linux
 
 export view, layout, window, window_manager
 
@@ -23,7 +27,7 @@ type SplitView* = ref object of View
 proc newVerticalSplitView*(): SplitView =
   ## A split view whose dividers are vertical; panes sit side by side and
   ## resize along their width.
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     let splitPtr = naSplitViewCreate(true)
   else:
     let splitPtr: pointer = nil
@@ -34,7 +38,7 @@ proc newVerticalSplitView*(): SplitView =
 proc newHorizontalSplitView*(): SplitView =
   ## A split view whose dividers are horizontal; panes stack and resize
   ## along their height.
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     let splitPtr = naSplitViewCreate(false)
   else:
     let splitPtr: pointer = nil
@@ -45,28 +49,28 @@ proc newHorizontalSplitView*(): SplitView =
 proc addPane*(sv: SplitView, pane: View) =
   ## Appends a resizable pane. Panes split available space equally by
   ## default; tune with setHoldingPriority.
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naSplitViewAddPane(sv.native, pane.native)
 
 func paneCount*(sv: SplitView): int =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     int(naSplitViewPaneCount(sv.native))
   else:
     0
 
 proc setDividerThickness*(sv: SplitView, thickness: float64) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naSplitViewSetDividerThickness(sv.native, thickness)
 
 proc setPosition*(sv: SplitView, dividerIndex: int, position: float64): bool =
   ## Moves the divider after `dividerIndex`. Returns false for out-of-range.
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naSplitViewSetPosition(sv.native, cint(dividerIndex), position)
   else:
     false
 
 proc getPosition*(sv: SplitView, dividerIndex: int): float64 =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naSplitViewGetPosition(sv.native, cint(dividerIndex))
   else:
     0.0
@@ -74,7 +78,7 @@ proc getPosition*(sv: SplitView, dividerIndex: int): float64 =
 proc setHoldingPriority*(sv: SplitView, paneIndex: int,
                          priority: float64) =
   ## Higher-priority panes keep their size while lower ones resize.
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naSplitViewSetHoldingPriority(sv.native, cint(paneIndex), priority)
 
 proc setPaneConstraints*(sv: SplitView, paneIndex: int,
@@ -83,7 +87,7 @@ proc setPaneConstraints*(sv: SplitView, paneIndex: int,
   ## Bounds a pane along the divider axis: width for vertical splits,
   ## height for horizontal ones. A bound of 0 means unconstrained.
   ## Repeated calls replace the pane's previous bounds.
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naSplitViewConstrainPane(sv.native, cint(paneIndex),
                              minWidth, maxWidth, minHeight, maxHeight)
 
@@ -103,7 +107,7 @@ type PaneRelayout = object
 
 var paneLayouts = initTable[uint32, PaneRelayout]()
 
-when defined(macosx) or defined(ios):
+when defined(macosx) or defined(ios) or defined(linux):
   proc paneFrameTrampoline(w: cdouble, h: cdouble, ctx: pointer) {.cdecl.} =
     let key = uint32(cast[int](ctx))
     if paneLayouts.hasKey(key):
@@ -117,7 +121,7 @@ when defined(macosx) or defined(ios):
 proc watchPaneFrame*(pane: View, root: ViewNode) =
   ## Re-applies the solver tree rooted at `root` whenever the pane view is
   ## resized natively (window layout, divider drag).
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     let key = pane.nativeKey
     paneLayouts[key] = PaneRelayout(root: root, lastW: -1.0, lastH: -1.0)
     naViewSetFrameCallback(pane.native, paneFrameTrampoline,

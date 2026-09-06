@@ -1,6 +1,6 @@
 ## Counter app on the macro DSL: initApp with state/render
 ## blocks. Same interface as counter_lowlevel.nim and counter_flutter.nim.
-import nkit/gui/appdsl_cocoa
+import ../src/nkit/gui/appdsl_cocoa
 
 dslWindowSize = size(420.0, 320.0)
 

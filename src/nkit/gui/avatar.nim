@@ -1,10 +1,10 @@
 import std/strutils
-import nkit/foundation/color
-import nkit/foundation/event_emitter
-import nkit/gui/view
-import nkit/gui/label
-import nkit/gui/imageview
-import nkit/gui/theme
+import ../foundation/color
+import ../foundation/event_emitter
+import ./view
+import ./label
+import ./imageview
+import ./theme
 
 export view, label, imageview
 
@@ -48,7 +48,7 @@ proc newAvatar*(size: AvatarSize = asMedium): Avatar =
 
 proc setImage*(av: Avatar, img: Image) =
   ## Displays an image clipped to a circle.
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     if av.imageViewValue.isNil:
       let iv = newImageView()
       av.imageViewValue = iv
@@ -61,7 +61,7 @@ proc setImage*(av: Avatar, img: Image) =
 
 proc setInitials*(av: Avatar, name: string) =
   ## Shows circular monogram initials derived from the given name.
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     if av.initialsLabel.isNil:
       let lbl = newLabel(initialsFor(name))
       av.initialsLabel = lbl

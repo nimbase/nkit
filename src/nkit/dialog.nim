@@ -1,4 +1,4 @@
-import nkit/foundation/event
+import ./foundation/event
 
 type DialogModality* = enum
   dmNone

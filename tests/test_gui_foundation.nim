@@ -2,7 +2,12 @@ import unittest
 import nkit
 import nkit/gui/view
 import nkit/gui/theme
-import nkit/platform/macos/nsfunctions
+when defined(macosx):
+  import nkit/platform/macos/nsfunctions
+elif defined(linux):
+  import nkit/platform/linux/gfunctions
+elif defined(ios):
+  import nkit/platform/ios/uifunctions
 
 suite "gui view base":
   test "create defaults and property round trips":

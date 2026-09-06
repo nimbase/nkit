@@ -1,5 +1,5 @@
 import std/[os, strutils]
-import nkit/cli/project
+import ./project
 
 ## Project scaffolding templates used by `nkit init`.
 ## Renders nkit.yaml, the nimble file and a starter application.

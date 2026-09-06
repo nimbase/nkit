@@ -1,9 +1,11 @@
-import nkit/foundation/event
-import nkit/foundation/event_emitter
+import ./foundation/event
+import ./foundation/event_emitter
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ./platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ./platform/macos/nsfunctions
+elif defined(linux):
+  import ./platform/linux/gfunctions
 
 type
   NotificationEvent* = ref object of Event
@@ -29,7 +31,7 @@ type
 
 var notifSink: proc(id: uint32, action: string) {.closure.}
 
-when defined(macosx) and not defined(ios):
+when defined(macosx) or defined(linux):
   var notifAuthSink*: proc(granted: bool) {.closure.}
 
   proc notifAuthTrampoline(granted: cint, ctx: pointer) {.cdecl.} =
@@ -52,19 +54,19 @@ proc newNotificationClickedEvent*(id: uint32,
 proc newNotificationCenter*(): NotificationCenter =
   result = NotificationCenter(supportedValue: false)
   initEmitter(result)
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     result.supportedValue = naNotificationsSupported()
     if result.supportedValue:
       naNotificationsSetResponseCallback(notifResponseTrampoline, nil)
 
 proc notificationsSupported*(nc: NotificationCenter): bool =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naNotificationsSupported()
   else:
     false
 
 proc notificationPermissionStatus*(nc: NotificationCenter): NotificationPermission =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     case naNotificationsAuthStatus()
     of -1: npUnsupported
     of 0: npNotDetermined
@@ -76,7 +78,7 @@ proc notificationPermissionStatus*(nc: NotificationCenter): NotificationPermissi
 proc requestNotificationPermission*(nc: NotificationCenter,
                                     cb: proc(granted: bool)) =
   ## Asks the user for notification authorization; cb fires once.
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     let selfRef = nc
     notifAuthSink = proc(granted: bool) =
       cb(granted)
@@ -90,7 +92,7 @@ proc requestNotificationPermission*(nc: NotificationCenter,
 proc showNotification*(nc: NotificationCenter,
                        content: NotificationContent): uint32 =
   ## Schedules a banner. Returns the id, or 0 when unsupported.
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     if not nc.notificationsSupported():
       return 0
     naNotificationsShow(content.title.cstring,
@@ -101,14 +103,14 @@ proc showNotification*(nc: NotificationCenter,
     0
 
 proc cancelNotification*(nc: NotificationCenter, id: uint32) =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     if nc.notificationsSupported():
       naNotificationsCancel(id)
 
 proc fireNotificationClickedSimulated*(nc: NotificationCenter,
                                        id: uint32, action = "clicked") =
   ## Test hook: delivers a click response through the normal pipeline.
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     notifResponseTrampoline(cuint(id), action.cstring, nil)
 
 proc onNotificationClicked*(nc: NotificationCenter,

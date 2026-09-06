@@ -1,13 +1,15 @@
 import std/tables
-import nkit/foundation/id_allocator
-import nkit/window
-import nkit/foundation/event
-import nkit/foundation/event_emitter
-import nkit/gui/view
+import ../foundation/id_allocator
+import ../window
+import ../foundation/event
+import ../foundation/event_emitter
+import ./view
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ../platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ../platform/macos/nsfunctions
+elif defined(linux):
+  import ../platform/linux/gfunctions
 
 export view
 
@@ -24,7 +26,7 @@ var toolbarItemOrder = initTable[int64, seq[uint32]]()
 var nextToolbarWidgetId: uint32 = 1
 var toolbarCallbacksArmed = false
 
-when defined(macosx) or defined(ios):
+when defined(macosx) or defined(ios) or defined(linux):
   proc toolbarClickTrampoline(widgetId: cuint, ctx: pointer) {.cdecl.} =
     let wid = uint32(widgetId)
     if toolbarItems.hasKey(wid):
@@ -37,14 +39,14 @@ proc newToolbarItemClickedEvent*(ordinal: int): ToolbarItemClickedEvent =
   discard stamp(result)
 
 proc ensureToolbarCallbacks() =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     if not toolbarCallbacksArmed:
       naToolbarSetClickCallback(toolbarClickTrampoline)
       toolbarCallbacksArmed = true
 
 proc attachToolbar*(win: Window): Toolbar =
   ensureToolbarCallbacks()
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     let h = naToolbarAttach(win.id.uint32)
   else:
     let h = int64(0)
@@ -53,7 +55,7 @@ proc attachToolbar*(win: Window): Toolbar =
 proc addItem*(t: Toolbar, label: string, symbolName: string,
               onTap: proc()): int =
   ## Appends an icon item; onTap fires on click. Returns the ordinal.
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     let wid = nextToolbarWidgetId
     inc nextToolbarWidgetId
     if not onTap.isNil:
@@ -68,18 +70,18 @@ proc addItem*(t: Toolbar, label: string, symbolName: string,
     0
 
 proc removeItem*(t: Toolbar, ordinal: int) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     discard
 
 proc itemCount*(t: Toolbar): int =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     int(naToolbarItemCount(t.handle))
   else:
     0
 
 proc fireToolbarItemSimulated*(t: Toolbar, ordinal: int) =
   ## Test hook: presses a toolbar item through the callback pipeline.
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     if toolbarItemOrder.hasKey(t.handle) and
         ordinal >= 0 and ordinal < toolbarItemOrder[t.handle].len:
       let wid = toolbarItemOrder[t.handle][ordinal]

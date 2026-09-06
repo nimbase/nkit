@@ -1,5 +1,5 @@
 import std/tables
-import nkit/storage
+import ./storage
 
 type SecureStorage* = ref object of Storage
   scope*: string

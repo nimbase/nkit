@@ -1,7 +1,9 @@
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ./platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ./platform/macos/nsfunctions
+elif defined(linux):
+  import ./platform/linux/gfunctions
 
 type LaunchAtLogin* = ref object
   id*: string
@@ -16,14 +18,14 @@ var defaultDisplayNameCache: string
 var defaultProgramPathCache: string
 
 proc detectDefaults() =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     if defaultIdCache.len == 0:
       defaultIdCache = $naLalDefaultId()
       defaultDisplayNameCache = $naLalDefaultDisplayName()
       defaultProgramPathCache = $naLalDefaultProgramPath()
 
 proc isSupported*(): bool =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naLalIsSupported()
   else:
     false
@@ -65,7 +67,7 @@ proc canUseConfiguredProgram(l: LaunchAtLogin): bool =
   l.programPath.len == 0 or l.programPath == l.defaultProgramPath
 
 proc enable*(l: LaunchAtLogin): bool =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     if not l.canUseConfiguredProgram():
       return false
     naLalEnable(l.id.cstring)
@@ -73,13 +75,13 @@ proc enable*(l: LaunchAtLogin): bool =
     false
 
 proc disable*(l: LaunchAtLogin): bool =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naLalDisable(l.id.cstring)
   else:
     false
 
 proc isEnabled*(l: LaunchAtLogin): bool =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naLalIsEnabled(l.id.cstring)
   else:
     false

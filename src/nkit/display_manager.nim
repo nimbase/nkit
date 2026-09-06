@@ -1,13 +1,15 @@
 import std/[tables]
-import nkit/foundation/event_emitter
-import nkit/foundation/geometry
-import nkit/positioning_strategy
-import nkit/display
+import ./foundation/event_emitter
+import ./foundation/geometry
+import ./positioning_strategy
+import ./display
 
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ./platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ./platform/macos/nsfunctions
+elif defined(linux):
+  import ./platform/linux/gfunctions
 
 type NativeDisplayInfo* = object
   key*: uint32
@@ -17,7 +19,7 @@ type DisplayManager* = ref object of EventEmitter[DisplayEvent]
   displays: Table[uint32, Display]
 
 proc enumerateNativeDisplays(): seq[NativeDisplayInfo] =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     let count = int(naScreenCount())
     result = newSeqOfCap[NativeDisplayInfo](count)
     for i in 0 ..< count:
@@ -73,14 +75,14 @@ proc getPrimaryDisplay*(dm: DisplayManager): Display =
     return displays[0]
 
 proc getCursorPosition*(_: DisplayManager): Point =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     var x, y: float64
     naScreenGetCursorPosition(addr x, addr y)
     Point(x: x, y: y)
   else:
     Point()
 
-when defined(macosx) or defined(ios):
+when defined(macosx) or defined(ios) or defined(linux):
   proc screensChangedTrampoline(ctx: pointer) {.cdecl.} =
     cast[DisplayManager](ctx).handleDisplaysChanged()
 
@@ -90,7 +92,7 @@ proc sharedDisplayManager*(): DisplayManager =
   if sharedDisplayManagerInstance.isNil:
     let dm = DisplayManager()
     initEmitter(dm)
-    when defined(macosx) or defined(ios):
+    when defined(macosx) or defined(ios) or defined(linux):
       naScreenSetChangedCallback(screensChangedTrampoline, cast[pointer](dm))
     setCursorPositionProvider(proc(): Point = dm.getCursorPosition())
     discard dm.getAllDisplays()

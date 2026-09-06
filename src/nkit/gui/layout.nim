@@ -1,11 +1,11 @@
 import std/math
-import nkit/gui/layout_core
-import nkit/gui/view
-import nkit/foundation/event
-import nkit/foundation/event_emitter
-import nkit/foundation/id_allocator
-import nkit/window
-import nkit/window_manager
+import ./layout_core
+import ./view
+import ../foundation/event
+import ../foundation/event_emitter
+import ../foundation/id_allocator
+import ../window
+import ../window_manager
 
 export layout_core, view
 

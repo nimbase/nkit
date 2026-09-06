@@ -2,36 +2,36 @@
 ## drop into `row()`/`column()` trees, or wires events on existing nodes.
 ## Constructor-first: common properties are optional params, not chainable
 ## setters.
-import nkit/foundation/event_emitter
-import nkit/gui/layout
-import nkit/gui/theme
-import nkit/alert
-import nkit/gui/popover
-import nkit/gui/split_view
-import nkit/gui/toolbar
-import nkit/gui/animate
-import nkit/gui/label
-import nkit/gui/button
-import nkit/gui/input
-import nkit/gui/textarea
-import nkit/gui/switch_widget
-import nkit/gui/slider
-import nkit/gui/progress
-import nkit/gui/segmented
-import nkit/gui/select
-import nkit/gui/imageview
-import nkit/gui/badge
-import nkit/gui/avatar
-import nkit/gui/separator
-import nkit/gui/datepicker
-import nkit/gui/scroll
-import nkit/gui/card
-import nkit/gui/tabs
-import nkit/gui/sidebar
-import nkit/gui/toast
-import nkit/gui/accordion
-import nkit/gui/stack
-import nkit/gui/router
+import ../foundation/event_emitter
+import ./layout
+import ./theme
+import ../alert
+import ./popover
+import ./split_view
+import ./toolbar
+import ./animate
+import ./label
+import ./button
+import ./input
+import ./textarea
+import ./switch_widget
+import ./slider
+import ./progress
+import ./segmented
+import ./select
+import ./imageview
+import ./badge
+import ./avatar
+import ./separator
+import ./datepicker
+import ./scroll
+import ./card
+import ./tabs
+import ./sidebar
+import ./toast
+import ./accordion
+import ./stack
+import ./router
 
 export layout, theme, label, button, input, textarea, switch_widget, slider,
        progress, segmented, select, imageview, badge, avatar, separator,

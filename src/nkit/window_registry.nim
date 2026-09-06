@@ -1,5 +1,5 @@
-import nkit/foundation/object_registry
-import nkit/window
+import ./foundation/object_registry
+import ./window
 
 type WindowRegistry* = ref object
   objects: ObjectRegistry[Window]

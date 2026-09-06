@@ -1,9 +1,11 @@
 import std/posix
 
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ./platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ./platform/macos/nsfunctions
+elif defined(linux):
+  import ./platform/linux/gfunctions
 
 type DeviceInfo* = ref object
 
@@ -14,27 +16,27 @@ proc sharedDeviceInfo*(): DeviceInfo =
     sharedDeviceInfoInstance = DeviceInfo()
   result = sharedDeviceInfoInstance
 
-proc unameField(field: array[256, char]): string =
-  let s = cstring(addr field[0])
+proc unameField(field: openArray[char]): string =
+  let s = cstring(unsafeAddr field[0])
   if s.len > 0:
     $s
   else:
     ""
 
 proc getName*(info: DeviceInfo): string =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     $naDeviceInfoName()
   else:
     ""
 
 proc getModel*(info: DeviceInfo): string =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     $naDeviceInfoModel()
   else:
     ""
 
 proc getManufacturer*(info: DeviceInfo): string =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     "Apple"
   elif defined(windows):
     ""
@@ -42,7 +44,7 @@ proc getManufacturer*(info: DeviceInfo): string =
     ""
 
 proc getOsName*(info: DeviceInfo): string =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     "macOS"
   elif defined(windows):
     "Windows"
@@ -52,7 +54,7 @@ proc getOsName*(info: DeviceInfo): string =
     ""
 
 proc getOsVersion*(info: DeviceInfo): string =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     $naDeviceInfoOsVersion()
   else:
     ""

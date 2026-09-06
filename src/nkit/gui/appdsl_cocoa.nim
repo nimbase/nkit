@@ -1,16 +1,16 @@
-import nkit/foundation/geometry
-import nkit/application
-import nkit/window
-import nkit/display
-import nkit/display_manager
-import nkit/gui/layout
-import nkit/gui/sugar
-import nkit/gui/appdsl
-import nkit/alert
-import nkit/gui/popover
-import nkit/gui/split_view
-import nkit/gui/toolbar
-import nkit/gui/animate
+import ../foundation/geometry
+import ../application
+import ../window
+import ../display
+import ../display_manager
+import ./layout
+import ./sugar
+import ./appdsl
+import ../alert
+import ./popover
+import ./split_view
+import ./toolbar
+import ./animate
 
 export geometry, application, window, display, display_manager, layout, sugar,
        appdsl, alert, popover, split_view, toolbar, animate

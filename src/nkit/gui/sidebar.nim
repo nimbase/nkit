@@ -1,20 +1,22 @@
 import std/strutils
-import nkit/foundation/id_allocator
-import nkit/foundation/event
-import nkit/foundation/event_emitter
-import nkit/gui/view
-import nkit/gui/stack
-import nkit/gui/scroll
-import nkit/gui/label
-import nkit/gui/separator
-import nkit/gui/imageview
-import nkit/gui/badge
-import nkit/gui/theme
-import nkit/gui/hover_router
+import ../foundation/id_allocator
+import ../foundation/event
+import ../foundation/event_emitter
+import ./view
+import ./stack
+import ./scroll
+import ./label
+import ./separator
+import ./imageview
+import ./badge
+import ./theme
+import ./hover_router
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ../platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ../platform/macos/nsfunctions
+elif defined(linux):
+  import ../platform/linux/gfunctions
 
 export view, stack, scroll
 
@@ -43,7 +45,7 @@ proc selectIndex*(sb: Sidebar, index: int) =
   ## Marks the given item selected and emits the selection event.
   if index < 0 or index >= sb.items.len or index == sb.selectedIndexValue:
     return
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     if sb.selectedIndexValue >= 0 and sb.selectedIndexValue < sb.items.len:
       naHoverViewSetSelected(sb.items[sb.selectedIndexValue].native, false)
     naHoverViewSetSelected(sb.items[index].native, true)
@@ -57,7 +59,7 @@ proc newSidebar*(): Sidebar =
   result = Sidebar(selectedIndexValue: -1)
   discard wrapView(result, scroller.native, vid)
 
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     let list = newStack(stVertical, spacing = 2.0)
     result.listStack = list
     setPadding(list, 6.0, 10.0, 6.0, 10.0)
@@ -69,13 +71,13 @@ proc addSectionHeader*(sb: Sidebar, title: string): Label =
   lbl.setFontSize(11.0)
   lbl.setFontWeight(fwSemibold)
   lbl.setTextColor(secondaryLabelColor())
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     addArranged(sb.listStack, lbl)
   result = lbl
 
 proc addItem*(sb: Sidebar, title: string, symbolName = "", badgeText = ""): SidebarItem =
   let itemVid = allocate(typeTagGuiWidget)
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     let hoverPtr = naHoverViewCreate(itemVid.uint32)
   else:
     let hoverPtr: pointer = nil
@@ -88,7 +90,7 @@ proc addItem*(sb: Sidebar, title: string, symbolName = "", badgeText = ""): Side
   let itemIndex = index
   registerHoverHandler(itemVid.uint32, proc() = selectIndex(self, itemIndex))
 
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     let row = newStack(stHorizontal, spacing = 8.0)
     row.setPadding(10.0, 5.0, 10.0, 5.0)
 
@@ -115,7 +117,7 @@ proc addItem*(sb: Sidebar, title: string, symbolName = "", badgeText = ""): Side
     addArranged(sb.listStack, result)
 
 proc addSeparatorLine*(sb: Sidebar) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     let sep = newSeparator(soHorizontal)
     sep.setThickness(1.0)
     setContentHugging(sep, 1, 750.0)
@@ -135,7 +137,7 @@ proc getItem*(sb: Sidebar, index: int): SidebarItem =
 
 proc fireItemClick*(sb: Sidebar, index: int) =
   ## Full-stack test hook.
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     if index >= 0 and index < sb.items.len:
       fireHoverHandler(sb.items[index].nativeKey)
 

@@ -1,17 +1,19 @@
 import std/tables
-import nkit/foundation/event
-import nkit/foundation/keyboard
-import nkit/foundation/event_emitter
-import nkit/foundation/id_allocator
-import nkit/foundation/geometry
-import nkit/placement
-import nkit/positioning_strategy
-import nkit/image
+import ./foundation/event
+import ./foundation/keyboard
+import ./foundation/event_emitter
+import ./foundation/id_allocator
+import ./foundation/geometry
+import ./placement
+import ./positioning_strategy
+import ./image
 
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ./platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ./platform/macos/nsfunctions
+elif defined(linux):
+  import ./platform/linux/gfunctions
 
 type
   MenuId* = Id
@@ -76,7 +78,7 @@ var globalItemClickSink*: ItemClickSink
 var globalMenuOpenedSink*: MenuIdSink
 var globalMenuClosedSink*: MenuIdSink
 
-when defined(macosx) and not defined(ios):
+when defined(macosx) or defined(linux):
   proc menuEventTrampoline(kind: cint, id: uint32, ctx: pointer) {.cdecl.} =
     case int(kind)
     of 0:
@@ -118,7 +120,7 @@ var liveItems: Table[uint32, MenuItem]
 var liveMenus: Table[uint32, Menu]
 
 proc ensureMenuCallbacks*() =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     if not menuCallbacksArmed:
       naMenuSetEventCallback(menuEventTrampoline, nil)
       globalItemClickSink = proc(itemKey: uint32) =
@@ -137,7 +139,7 @@ proc ensureMenuCallbacks*() =
 
 proc newMenuItem*(label = "", itemType: MenuItemType = mitNormal): MenuItem =
   ensureMenuCallbacks()
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     let key = naMenuItemCreate(label.cstring, cint(ord(itemType)))
   else:
     let key = allocate(typeTagMenuItem).uint32
@@ -160,13 +162,13 @@ proc getType*(mi: MenuItem): MenuItemType =
 proc setLabel*(mi: MenuItem, label: string) =
   mi.labelValue = label
   mi.labelSet = true
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naMenuItemSetLabel(mi.nativeKey, label.cstring)
 
 proc clearLabel*(mi: MenuItem) =
   mi.labelValue = ""
   mi.labelSet = false
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naMenuItemSetLabel(mi.nativeKey, "")
 
 proc getLabel*(mi: MenuItem): string =
@@ -181,17 +183,17 @@ proc hasLabel*(mi: MenuItem): bool =
 proc setTooltip*(mi: MenuItem, tooltip: string) =
   mi.tooltipValue = tooltip
   mi.tooltipSet = true
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naMenuItemSetTooltip(mi.nativeKey, tooltip.cstring)
 
 proc clearTooltip*(mi: MenuItem) =
   mi.tooltipValue = ""
   mi.tooltipSet = false
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naMenuItemSetTooltip(mi.nativeKey, nil)
 
 proc setIcon*(mi: MenuItem, img: Image) =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naMenuItemSetIconPtr(mi.nativeKey, if img.isNil: nil else: img.nativePtr())
 
 proc getTooltip*(mi: MenuItem): string =
@@ -203,13 +205,13 @@ proc getTooltip*(mi: MenuItem): string =
 proc setAccelerator*(mi: MenuItem, acc: KeyboardAccelerator) =
   mi.acceleratorValue = acc
   mi.hasAccelerator = true
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naMenuItemSetAccelerator(mi.nativeKey, acc.key.cstring, acc.modifiers.uint32)
 
 proc clearAccelerator*(mi: MenuItem) =
   mi.acceleratorValue = KeyboardAccelerator()
   mi.hasAccelerator = false
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naMenuItemSetAccelerator(mi.nativeKey, "", cuint(0))
 
 proc getAccelerator*(mi: MenuItem): KeyboardAccelerator =
@@ -219,11 +221,11 @@ proc getAccelerator*(mi: MenuItem): KeyboardAccelerator =
     KeyboardAccelerator()
 
 proc setEnabled*(mi: MenuItem, enabled: bool) =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naMenuItemSetEnabled(mi.nativeKey, enabled)
 
 proc isEnabled*(mi: MenuItem): bool =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naMenuItemIsEnabled(mi.nativeKey)
   else:
     true
@@ -234,7 +236,7 @@ proc setState*(mi: MenuItem, state: MenuItemState) =
     if mi.itemType == mitRadio and state == misMixed:
       return
     mi.stateValue = state
-    when defined(macosx) and not defined(ios):
+    when defined(macosx) or defined(linux):
       naMenuItemSetState(mi.nativeKey, cint(ord(state)))
   else:
     discard
@@ -244,7 +246,7 @@ proc getState*(mi: MenuItem): MenuItemState =
 
 proc setRadioGroup*(mi: MenuItem, group: int) =
   mi.radioGroupValue = group
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naMenuItemSetRadioGroup(mi.nativeKey, cint(group))
 
 proc getRadioGroup*(mi: MenuItem): int =
@@ -259,7 +261,7 @@ proc setSubmenu*(mi: MenuItem, submenu: Menu) =
       discard mi.submenuValue.removeListener(mi.submenuClosedListener)
       mi.submenuClosedListener = 0
   mi.submenuValue = submenu
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     let submenuKey = if submenu.isNil: uint32(0) else: submenu.nativeKey
     naMenuItemSetSubmenu(mi.nativeKey, submenuKey)
   if not submenu.isNil:
@@ -274,12 +276,12 @@ proc getSubmenu*(mi: MenuItem): Menu =
 
 proc free*(mi: MenuItem) =
   liveItems.del(mi.nativeKey)
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naMenuItemFree(mi.nativeKey)
 
 proc newMenu*(): Menu =
   ensureMenuCallbacks()
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     let key = naMenuCreate()
   else:
     let key = allocate(typeTagMenu).uint32
@@ -292,7 +294,7 @@ proc getId*(m: Menu): MenuId =
 
 proc addItem*(m: Menu, item: MenuItem) =
   m.items.add(item)
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naMenuAddItem(m.nativeKey, item.nativeKey)
 
 proc insertItem*(m: Menu, index: Natural, item: MenuItem) =
@@ -300,13 +302,13 @@ proc insertItem*(m: Menu, index: Natural, item: MenuItem) =
     m.addItem(item)
     return
   m.items.insert(item, index)
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naMenuInsertItem(m.nativeKey, item.nativeKey, cint(index))
 
 proc removeItem*(m: Menu, item: MenuItem): bool =
   for i in 0 ..< m.items.len:
     if m.items[i] == item:
-      when defined(macosx) and not defined(ios):
+      when defined(macosx) or defined(linux):
         discard naMenuRemoveItem(m.nativeKey, item.nativeKey)
       m.items.delete(i)
       return true
@@ -315,7 +317,7 @@ proc removeItem*(m: Menu, item: MenuItem): bool =
 proc removeItemById*(m: Menu, itemId: MenuItemId): bool =
   for i in 0 ..< m.items.len:
     if m.items[i].id == itemId:
-      when defined(macosx) and not defined(ios):
+      when defined(macosx) or defined(linux):
         discard naMenuRemoveItem(m.nativeKey, m.items[i].nativeKey)
       m.items.delete(i)
       return true
@@ -325,13 +327,13 @@ proc removeItemAt*(m: Menu, index: Natural): bool =
   if index >= m.items.len:
     return false
   let item = m.items[index]
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     discard naMenuRemoveItem(m.nativeKey, item.nativeKey)
   m.items.delete(index)
   true
 
 proc clearItems*(m: Menu) =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naMenuClear(m.nativeKey)
   m.items.setLen(0)
 
@@ -372,15 +374,15 @@ proc open*(m: Menu, strategy: PositioningStrategy, placement: Placement = plBott
     let offset = strategy.relativeOffset
     x = rect.x + offset.x
     y = rect.y + offset.y
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naMenuPopup(m.nativeKey, x, y, cint(ord(placement)))
 
 proc close*(m: Menu): bool =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naMenuCancelTracking(m.nativeKey)
   true
 
 proc free*(m: Menu) =
   liveMenus.del(m.nativeKey)
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naMenuFree(m.nativeKey)
