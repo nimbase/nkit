@@ -29,25 +29,17 @@ idiomatic Nim surface.
 
 ## Features
 
-- Unified system APIs from a single `import nkit` — same Nim surface on macOS, iOS and Linux (Windows/Android on the way)
-- Cross-platform desktop and mobile development in pure Nim
-- Small C and Objective-C shims compiled directly into your binary
-- Access to low-level system APIs and bindings when you need full control
-- Native widgets — AppKit (macOS), UIKit (iOS), GTK 3/4 (Linux) — every control is the OS control
-- WebView (WKWebView / WebKitGTK) with full `WKWebViewConfiguration` parity — isolated `WebContext` per view or shared via `newSharedWebView`
-- Three API tiers per screen: raw `View` shims, Flutter-style `sugar` composition, or macro `initApp` DSL with `state`/`render` blocks
-- Pure-Nim layout solver (rows, columns, flex, `expanded`, `sizedBox`, padding, `Spacing`, nine-point `Alignment` / `crossAlign` / `mainAlign`) driving native views, plus `installLayout` window-resize handling
-- Windows — create, bounds/position/size, title, resizable/movable/closable, opacity, background, title-bar style, `WindowManager` events (`WindowResizedEvent`, `WindowMovedEvent`)
-- Displays — `Display` / `DisplayManager`, frame/work-area, scale, refresh rate, cursor
-- Application lifecycle — `initApplication` / `run` / `quit`, dock/menu, app/display info
-- Menus and tray — `Menu` / `MenuItem` (accelerators, submenus), `TrayIcon` / `TrayManager` (StatusNotifier on Linux)
-- Dialogs — `Dialog`, `MessageDialog`, `AlertDialog` (buttons, accessory view), file open/save panels
-- System services — clipboard (text/image/files), notifications (`org.freedesktop.Notifications` / `UNUserNotificationCenter`), `UrlOpener`, `AccessibilityManager`, `LaunchAtLogin`
-- Input — global `KeyboardMonitor` / `MouseMonitor`, `Hotkey` / `ShortcutManager`, drag & drop
-- Storage — `Preferences` / `Storage` (`GKeyFile` / `NSUserDefaults`), `SecureStorage` (Keychain / libsecret), `Image` (file/base64, `GdkPixbuf` / `NSImage`)
-- Theme — `Theme` (dark/light, accent, label, control, system colors)
-- Widgets — `Button` (push/toggle/check/radio), `Label`, `Separator`, `Input`/`TextArea`, `Switch`, `Slider`, `Progress`, `Segmented`, `Select`, `DatePicker`, `ImageView`, `Stack`, `Scroll`, `Card`, `Badge`, `Tabs`, `Avatar`, `Accordion`, `HoverRouter`, `Sidebar`, `Toast`, `Popover`, `SplitView`, `Toolbar`, `Animate`
-- CLI — `nkit init` / `build` / `run` / `logs` / `clean`, `devices`, `runtimes` — scaffolds `nkit.yaml`, renders per-platform `config.nims` (`hostArch`, `outDirFor`, `appBundlePath`)
+- Native widgets on macOS, iOS, and Linux using platform UI frameworks
+- Unified clipboard, notifications, dialogs, and system services
+- Global keyboard/mouse monitors and hotkey support
+- Secure storage with Keychain and libsecret integration
+- Dark and light theme with customizable accent colors
+- Flexible layout system with flex, alignment, and spacing controls
+- Three API tiers: low-level shims, compositional sugar, or macro DSL
+- Built-in WebView with full configuration support
+- Menu bar and system tray integration
+- Display management and multi-monitor handling
+- Cross-platform CLI for scaffolding, building, and running apps
 
 ### CLI application
 ```
@@ -206,9 +198,9 @@ Platform support:
 | --- | --- |
 | macOS (Cocoa/AppKit) | Done, active development |
 | Windows | Planned |
-| Linux | Planned |
-| iOS | active development |
-| Android | Planned |
+| Linux | Active development |
+| iOS | Active development |
+| Android | Active development |
 
 Planned work:
 
