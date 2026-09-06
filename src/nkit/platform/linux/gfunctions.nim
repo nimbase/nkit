@@ -370,6 +370,7 @@ proc naViewGetTooltip*(viewPtr: pointer): cstring {.importc: "na_view_get_toolti
 proc naViewSetTag*(viewPtr: pointer, tag: cint) {.importc: "na_view_set_tag".}
 proc naViewGetTag*(viewPtr: pointer): cint {.importc: "na_view_get_tag".}
 proc naViewSetFrame*(viewPtr: pointer, x, y, w, h: float64) {.importc: "na_view_set_frame".}
+proc naViewSetFrameNoRequest*(viewPtr: pointer, x, y, w, h: float64) {.importc: "na_view_set_frame_no_request".}
 proc naViewGetFrame*(viewPtr: pointer, outX, outY, outW, outH: ptr float64) {.
   importc: "na_view_get_frame".}
 proc naViewAddSubview*(parentPtr, childPtr: pointer) {.importc: "na_view_add_subview".}
@@ -651,6 +652,14 @@ type NaFrameChangedFn* = proc(width: cdouble, height: cdouble,
 proc naViewSetFrameCallback*(viewPtr: pointer, fn: NaFrameChangedFn,
                              ctx: pointer) {.importc: "na_view_set_frame_callback".}
 
+# Box layout helpers (replaces GtkFixed absolute positioning)
+proc naViewSetOrientation*(viewPtr: pointer, orientation: cint) {.importc: "na_view_set_orientation".}
+proc naViewSetExpanded*(viewPtr: pointer, expanded: bool) {.importc: "na_view_set_expanded".}
+proc naViewSetSpacing*(viewPtr: pointer, spacing: float64) {.importc: "na_view_set_spacing".}
+proc naViewSetMargin*(viewPtr: pointer, left, top, right, bottom: float64) {.importc: "na_view_set_margin".}
+proc naViewSetExpandFill*(viewPtr: pointer, expand, fill: bool) {.importc: "na_view_set_expand_fill".}
+proc naViewSetCrossAlign*(viewPtr: pointer, vertical: bool, align: cint) {.importc: "na_view_set_cross_align".}
+
 # ── WKWebView / WebKitGTK ─────────────────────────────────────────────
 # Isolated by default: each webview owns its WebKitWebContext + UCM +
 # WebKitWebsiteDataManager. Shared is opt-in via naWebContext* at the
@@ -795,6 +804,7 @@ proc naWebViewSetScriptResultCallback*(fn: NaWebViewScriptResultFn, ctx: pointer
 
 # WKNavigationDelegate + WKUIDelegate callbacks
 type NaWebViewNavigationFn* = proc(widgetId: uint32, kind: cint, url: cstring, ctx: pointer) {.cdecl.}
+type NaWebViewDecidePolicyFn* = proc(widgetId: uint32, decisionId: uint32, decisionType: cint, url: cstring, ctx: pointer) {.cdecl.}
 type NaWebViewProgressFn*   = proc(widgetId: uint32, progress: float64, ctx: pointer) {.cdecl.}
 type NaWebViewMessageFn*    = proc(widgetId: uint32, handler: cstring, body: cstring, ctx: pointer) {.cdecl.}
 type NaWebViewDialogFn*     = proc(widgetId: uint32, kind: cint, message: cstring, defaultText: cstring, ctx: pointer): cstring {.cdecl.}
@@ -806,7 +816,7 @@ proc naWebViewSetMessageCallback*(fn: NaWebViewMessageFn, ctx: pointer) {.import
 proc naWebViewSetDialogCallback*(fn: NaWebViewDialogFn, ctx: pointer) {.importc: "na_webview_set_dialog_callback".}
 proc naWebViewSetPermissionCallback*(fn: NaWebViewPermissionFn, ctx: pointer) {.importc: "na_webview_set_permission_callback".}
 proc naWebViewSetTerminateCallback*(fn: NaWebViewTerminateFn, ctx: pointer) {.importc: "na_webview_set_terminate_callback".}
-proc naWebViewSetDecidePolicyCallback*(fn: NaWebViewNavigationFn, ctx: pointer) {.importc: "na_webview_set_decide_policy_callback".}
+proc naWebViewSetDecidePolicyCallback*(fn: NaWebViewDecidePolicyFn, ctx: pointer) {.importc: "na_webview_set_decide_policy_callback".}
 proc naWebViewDecidePolicy*(viewPtr: pointer, decisionId: uint32, allow: bool) {.importc: "na_webview_decide_policy".}
 proc naWebViewReplyScriptMessage*(viewPtr: pointer, handler: cstring, replyJson: cstring) {.importc: "na_webview_reply_script_message".}
 

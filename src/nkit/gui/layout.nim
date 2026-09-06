@@ -161,8 +161,45 @@ proc layoutIn*(root: ViewNode, parent: View) =
   let f = getFrameRect(parent)
   applyLayout(root, size(f.width, f.height))
 
+proc applyBoxProps*(n: LayoutNode) =
+  ## Apply GtkBox properties. Must run BEFORE attachViews so cst->expanded
+  ## is set when box_pack_child reads it during gtk_box_pack_start.
+  let v = viewOf(n)
+  if v.isNil: return
+  case n.kind
+  of likRow:
+    ## Row: horizontal box. Don't expand in parent's main axis (vertical).
+    ## The row's parent (column) decides whether to give it space.
+    setOrientation(v, true)
+    setSpacing(v, n.spacing)
+  of likColumn:
+    ## Column: vertical box. Expand to fill parent vertically.
+    setOrientation(v, false)
+    setSpacing(v, n.spacing)
+    setExpanded(v, true)
+  of likExpanded:
+    setExpanded(v, true)
+    ## Child of expanded also fills
+    if n.children.len > 0:
+      let cv = viewOf(n.children[0])
+      if not cv.isNil:
+        setExpanded(cv, true)
+  of likPadding:
+    let i = n.insets
+    setMargin(v, i.left, i.top, i.right, i.bottom)
+    setExpanded(v, true)
+  of likMargin:
+    let i = n.insets
+    setMargin(v, i.left, i.top, i.right, i.bottom)
+  else:
+    discard
+  for c in n.children:
+    applyBoxProps(c)
+
 proc installLayout*(win: Window, root: ViewNode) =
-  ## Makes the node tree the window's content and keeps it laid out on resize.
+  ## Makes the node tree the window's content. With GtkBox the native
+  ## containers handle sizing/positioning — we only need to build the
+  ## widget tree and set box properties once. No re-layout on resize.
   when defined(nkitTrace):
     proc llog(msg: string) =
       let f = open("/tmp/nkit_nim.log", fmAppend)
@@ -171,14 +208,10 @@ proc installLayout*(win: Window, root: ViewNode) =
     llog("setContent start")
   setContent(win, root.view)
   when defined(nkitTrace): llog("setContent done")
-  proc apply() =
-    let cs = win.getContentSize()
-    applyLayout(root, cs)
-  apply()
-  let wm = sharedWindowManager()
-  discard wm.addListener(proc(e: WindowResizedEvent) =
-    if e.windowId == win.id:
-      apply())
+  ## Apply box properties FIRST so expanded/spacing/orientation are set
+  ## on ViewNodes BEFORE attachViews packs children into their parents.
+  applyBoxProps(root)
+  attachViews(root)
 
 template layout*(body: untyped) =
   ## Mounts the produced tree on the most recently created window:

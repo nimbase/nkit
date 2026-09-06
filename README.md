@@ -29,17 +29,25 @@ idiomatic Nim surface.
 
 ## Features
 
-- Unified system APIs across multiple platforms from a single import
+- Unified system APIs from a single `import nkit` — same Nim surface on macOS, iOS and Linux (Windows/Android on the way)
 - Cross-platform desktop and mobile development in pure Nim
-- Based on simple C and Objective-C shims, compiled directly into your binary
-- No dynamic bridge, no runtime reflection
+- Small C and Objective-C shims compiled directly into your binary
 - Access to low-level system APIs and bindings when you need full control
-- Native system GUI built on AppKit today, with other platforms on the way
-- Three API tiers so you can pick the right altitude per screen:
-  raw views, Flutter-style composition, or a macro DSL
-- A pure-Nim layout solver (rows, columns, flex, padding, alignment)
-  that drives native views and stays portable across backends
-- Beautiful macro-based application DSL with state and render blocks
+- Native widgets — AppKit (macOS), UIKit (iOS), GTK 3/4 (Linux) — every control is the OS control
+- WebView (WKWebView / WebKitGTK) with full `WKWebViewConfiguration` parity — isolated `WebContext` per view or shared via `newSharedWebView`
+- Three API tiers per screen: raw `View` shims, Flutter-style `sugar` composition, or macro `initApp` DSL with `state`/`render` blocks
+- Pure-Nim layout solver (rows, columns, flex, `expanded`, `sizedBox`, padding, `Spacing`, nine-point `Alignment` / `crossAlign` / `mainAlign`) driving native views, plus `installLayout` window-resize handling
+- Windows — create, bounds/position/size, title, resizable/movable/closable, opacity, background, title-bar style, `WindowManager` events (`WindowResizedEvent`, `WindowMovedEvent`)
+- Displays — `Display` / `DisplayManager`, frame/work-area, scale, refresh rate, cursor
+- Application lifecycle — `initApplication` / `run` / `quit`, dock/menu, app/display info
+- Menus and tray — `Menu` / `MenuItem` (accelerators, submenus), `TrayIcon` / `TrayManager` (StatusNotifier on Linux)
+- Dialogs — `Dialog`, `MessageDialog`, `AlertDialog` (buttons, accessory view), file open/save panels
+- System services — clipboard (text/image/files), notifications (`org.freedesktop.Notifications` / `UNUserNotificationCenter`), `UrlOpener`, `AccessibilityManager`, `LaunchAtLogin`
+- Input — global `KeyboardMonitor` / `MouseMonitor`, `Hotkey` / `ShortcutManager`, drag & drop
+- Storage — `Preferences` / `Storage` (`GKeyFile` / `NSUserDefaults`), `SecureStorage` (Keychain / libsecret), `Image` (file/base64, `GdkPixbuf` / `NSImage`)
+- Theme — `Theme` (dark/light, accent, label, control, system colors)
+- Widgets — `Button` (push/toggle/check/radio), `Label`, `Separator`, `Input`/`TextArea`, `Switch`, `Slider`, `Progress`, `Segmented`, `Select`, `DatePicker`, `ImageView`, `Stack`, `Scroll`, `Card`, `Badge`, `Tabs`, `Avatar`, `Accordion`, `HoverRouter`, `Sidebar`, `Toast`, `Popover`, `SplitView`, `Toolbar`, `Animate`
+- CLI — `nkit init` / `build` / `run` / `logs` / `clean`, `devices`, `runtimes` — scaffolds `nkit.yaml`, renders per-platform `config.nims` (`hostArch`, `outDirFor`, `appBundlePath`)
 
 ### CLI application
 ```

@@ -34,6 +34,8 @@ typedef void (*cookie_fn)(uint32_t,const char*,void*);
 typedef void (*data_fn)(uint32_t,const char*,void*);
 typedef void (*pdf_fn)(uint32_t,uint32_t,bool,void*);
 typedef void (*snap_fn)(uint32_t,uint32_t,int64_t,void*);
+/* decide-policy callback: (wid, decisionId, type, uri, ctx) */
+typedef void (*decide_fn)(uint32_t,uint32_t,int,const char*,void*);
 
 static nav_fn    g_nav_fn = NULL; static void *g_nav_ctx = NULL;
 static prog_fn   g_prog_fn = NULL; static void *g_prog_ctx = NULL;
@@ -41,7 +43,7 @@ static msg_fn    g_msg_fn = NULL; static void *g_msg_ctx = NULL;
 static dialog_fn g_dialog_fn = NULL; static void *g_dialog_ctx = NULL;
 static perm_fn   g_perm_fn = NULL; static void *g_perm_ctx = NULL;
 static term_fn   g_term_fn = NULL; static void *g_term_ctx = NULL;
-static nav_fn    g_decide_fn = NULL; static void *g_decide_ctx = NULL;
+static decide_fn g_decide_fn = NULL; static void *g_decide_ctx = NULL;
 static scheme_fn g_scheme_fn = NULL; static void *g_scheme_ctx = NULL;
 static script_fn g_script_fn = NULL; static void *g_script_ctx = NULL;
 static cookie_fn g_cookie_fn = NULL; static void *g_cookie_ctx = NULL;
@@ -269,23 +271,24 @@ static gboolean on_decide_policy(WebKitWebView *wv, WebKitPolicyDecision *dec, W
     uri = webkit_uri_request_get_uri(req);
   } else if(type==WEBKIT_POLICY_DECISION_TYPE_RESPONSE){
     WebKitURIResponse *resp = webkit_response_policy_decision_get_response(WEBKIT_RESPONSE_POLICY_DECISION(dec));
-    uri = webkit_uri_response_get_uri(resp);
+    uri = resp ? webkit_uri_response_get_uri(resp) : "";
   } else if(type==WEBKIT_POLICY_DECISION_TYPE_NEW_WINDOW_ACTION){
     WebKitNavigationAction *na = webkit_navigation_policy_decision_get_navigation_action(WEBKIT_NAVIGATION_POLICY_DECISION(dec));
     WebKitURIRequest *req = webkit_navigation_action_get_request(na);
     uri = webkit_uri_request_get_uri(req);
   }
   if(!uri) uri="";
+  uint32_t did = g_nextDecisionId++;
+  if(d) g_hash_table_insert(d->pendingDecisions, GUINT_TO_POINTER(did), g_object_ref(dec));
   if(g_decide_fn){
-    uint32_t did = g_nextDecisionId++;
-    if(d) g_hash_table_insert(d->pendingDecisions, GUINT_TO_POINTER(did), g_object_ref(dec));
-    g_decide_fn(wid, 0, uri, g_decide_ctx);
-    // If app does not call na_webview_decide_policy, we auto-allow after idle? For now allow after callback returns by ignoring.
-    // WebKit expects decision synchronously; we must not block. Default to allow.
-    webkit_policy_decision_use(dec);
-    return TRUE;
+    g_decide_fn(wid, did, (int)type, uri, g_decide_ctx);
   }
+  /* Default: allow. App can override via na_webview_decide_policy before
+     the next idle, but since WebKit expects synchronous resolution we
+     must resolve here. The decision object stays in pendingDecisions
+     so the app can inspect it after the fact. */
   webkit_policy_decision_use(dec);
+  if(d) g_hash_table_remove(d->pendingDecisions, GUINT_TO_POINTER(did));
   return TRUE;
 }
 static void on_script_message(WebKitUserContentManager *mgr, WebKitJavascriptResult *jsRes, gpointer ud){
@@ -829,7 +832,7 @@ void na_webview_set_message_callback(void *fn,void *ctx){ g_msg_fn=(msg_fn)fn; g
 void na_webview_set_dialog_callback(void *fn,void *ctx){ g_dialog_fn=(dialog_fn)fn; g_dialog_ctx=ctx; }
 void na_webview_set_permission_callback(void *fn,void *ctx){ g_perm_fn=(perm_fn)fn; g_perm_ctx=ctx; }
 void na_webview_set_terminate_callback(void *fn,void *ctx){ g_term_fn=(term_fn)fn; g_term_ctx=ctx; }
-void na_webview_set_decide_policy_callback(void *fn,void *ctx){ g_decide_fn=(nav_fn)fn; g_decide_ctx=ctx; }
+void na_webview_set_decide_policy_callback(void *fn,void *ctx){ g_decide_fn=(decide_fn)fn; g_decide_ctx=ctx; }
 void na_webview_decide_policy(void *ptr,uint32_t did,bool allow){
   GtkWidget *w=(GtkWidget*)ptr; if(!w) return;
   WebViewData *d=data_of(w);

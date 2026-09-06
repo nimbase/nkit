@@ -94,6 +94,12 @@ proc setFrameRect*(v: View, frame: Rectangle) =
   when defined(macosx) or defined(ios) or defined(linux):
     naViewSetFrame(v.native, frame.x, frame.y, frame.width, frame.height)
 
+proc setFrameNoRequest*(v: View, frame: Rectangle) =
+  ## Like setFrameRect but does NOT set minimum size request – allows window to shrink
+  ## below this size and makes resize synchronous (no delayed queue_resize).
+  when defined(macosx) or defined(ios) or defined(linux):
+    naViewSetFrameNoRequest(v.native, frame.x, frame.y, frame.width, frame.height)
+
 proc getFrameRect*(v: View): Rectangle =
   when defined(macosx) or defined(ios) or defined(linux):
     var x, y, w, h: float64
@@ -190,3 +196,30 @@ proc getAlpha*(v: View): float64 =
 proc setContent*(w: Window, v: View) =
   when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetRootView(w.nativeKey, v.native)
+
+# Box layout helpers (Linux/GTK — replaces GtkFixed absolute positioning)
+
+proc setOrientation*(v: View, horizontal: bool) =
+  when defined(linux):
+    naViewSetOrientation(v.native, cint(if horizontal: 1 else: 0))
+
+proc setExpanded*(v: View, expanded: bool) =
+  when defined(linux):
+    naViewSetExpanded(v.native, expanded)
+
+proc setSpacing*(v: View, spacing: float64) =
+  when defined(linux):
+    naViewSetSpacing(v.native, spacing)
+
+proc setMargin*(v: View, left, top, right, bottom: float64) =
+  when defined(linux):
+    naViewSetMargin(v.native, left, top, right, bottom)
+
+proc setExpandFill*(v: View, expand, fill: bool) =
+  when defined(linux):
+    naViewSetExpandFill(v.native, expand, fill)
+
+proc setCrossAlign*(v: View, vertical: bool, align: int) =
+  ## align: 0=fill, 1=center, 2=start, 3=end
+  when defined(linux):
+    naViewSetCrossAlign(v.native, vertical, cint(align))

@@ -47,8 +47,15 @@ static inline void na_linux_ensure_gtk(void) {
   }
 }
 
-// Shared ViewState layout storage for fixed-position container (GtkFixed)
-// and generic widgets. Used by view.c and controls.c separator/thickness.
+// Debug logging — define NKIT_DEBUG to enable stderr traces.
+#ifdef NKIT_DEBUG
+  #define DBG_LOG(...) do { fprintf(stderr, __VA_ARGS__); fflush(stderr); } while(0)
+#else
+  #define DBG_LOG(...) do {} while(0)
+#endif
+
+// Shared ViewState layout storage for containers and generic widgets.
+// Used by view.c and controls.c separator/thickness.
 typedef struct {
   double x, y, w, h;
   bool hidden;
@@ -57,6 +64,8 @@ typedef struct {
   unsigned char bg[4];
   bool has_bg;
   double alpha;
+  bool expanded;       // hexpand+vexpand for GtkBox children
+  int orientation;     // 0=vertical (default), 1=horizontal (GtkBox)
 } NkitViewState;
 
 static inline NkitViewState *nkit_state_of(GtkWidget *w) {

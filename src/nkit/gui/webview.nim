@@ -2,7 +2,16 @@ import std/[tables]
 import ../foundation/id_allocator
 import ../foundation/event
 import ../foundation/event_emitter
+import ../foundation/geometry
+import ../window
+import ../window_manager
 import ./view
+when defined(linux):
+  import ../platform/linux/gfunctions
+elif defined(macosx):
+  import ../platform/macos/nsfunctions
+elif defined(ios):
+  import ../platform/ios/uifunctions
 
 when defined(ios):
   import ../platform/ios/uifunctions
@@ -65,6 +74,10 @@ type
     wnkCommitted = 2
     wnkFinished = 3
     wnkFailed = 4
+  WebPolicyDecisionKind* = enum
+    wpdkNavigationAction = 0
+    wpdkResponse = 1
+    wpdkNewWindowAction = 2
 
 # ── events ──────────────────────────────────────────────────────────
 type
@@ -90,6 +103,11 @@ type
     permission*: WebPermissionKind
   WebTerminateEvent* = ref object of GuiEvent
     webViewId*: Id
+  WebPolicyEvent* = ref object of GuiEvent
+    webViewId*: Id
+    decisionId*: uint32
+    decisionType*: WebPolicyDecisionKind
+    url*: string
   WebSchemeEvent* = ref object of GuiEvent
     webViewId*: Id
     scheme*: string
@@ -102,6 +120,7 @@ method typeName*(e: WebMessageEvent): string = "WebMessageEvent"
 method typeName*(e: WebDialogEvent): string = "WebDialogEvent"
 method typeName*(e: WebPermissionEvent): string = "WebPermissionEvent"
 method typeName*(e: WebTerminateEvent): string = "WebTerminateEvent"
+method typeName*(e: WebPolicyEvent): string = "WebPolicyEvent"
 method typeName*(e: WebSchemeEvent): string = "WebSchemeEvent"
 
 # ── WebContext (WKProcessPool + WKWebsiteDataStore) ────────────────
@@ -209,6 +228,9 @@ proc fetchDataRecords*(ctx: WebContext, typesMask: int, cb: proc(json: string)) 
 type WebView* = ref object of View
   context*: WebContext
   ownsContext*: bool
+  fitContainer*: View
+  fitToolbar*: View
+  fitWindowId*: WindowId
 
 var liveWebViews: Table[uint32, WebView]
 var jsCallbacks: Table[uint32, proc(resultJson: string, isError: bool)]
@@ -232,10 +254,16 @@ when defined(linux):
     let w = liveWebViews.getOrDefault(wid)
     if w.isNil: return
     emitAsync(w, WebMessageEvent(webViewId: w.id, handler: $handler, body: $body))
-  proc decideTrampoline(wid: uint32, kind: cint, url: cstring, ctx: pointer) {.cdecl.} =
+  proc decideTrampoline(wid: uint32, did: uint32, dtype: cint, url: cstring, ctx: pointer) {.cdecl.} =
     let w = liveWebViews.getOrDefault(wid)
     if w.isNil: return
-    emitAsync(w, WebNavigationEvent(webViewId: w.id, kind: wnkDecidePolicy, url: $url))
+    let ev = WebPolicyEvent(
+      webViewId: w.id,
+      decisionId: did,
+      decisionType: WebPolicyDecisionKind(dtype),
+      url: $url
+    )
+    emitAsync(w, ev)
   proc termTrampoline(wid: uint32, ctx: pointer) {.cdecl.} =
     let w = liveWebViews.getOrDefault(wid)
     if w.isNil: return
@@ -724,6 +752,120 @@ proc onScheme*(w: WebView, handler: proc(e: WebSchemeEvent)): ListenerId {.disca
   addListener[GuiEvent, WebSchemeEvent](w, handler)
 proc onTerminated*(w: WebView, handler: proc(e: WebTerminateEvent)): ListenerId {.discardable.} =
   addListener[GuiEvent, WebTerminateEvent](w, handler)
+proc onDecidePolicy*(w: WebView, handler: proc(e: WebPolicyEvent)): ListenerId {.discardable.} =
+  addListener[GuiEvent, WebPolicyEvent](w, handler)
+
+proc fitSize*(w: WebView, win: Window = nil) =
+  ## Make the WebView fill its window and keep it filled on resize.
+  ## Call after creating the WebView and Window, e.g.:
+  ##   let win = newWindow()
+  ##   let browser = newWebView()
+  ##   browser.fitSize(win)
+  ## or without args it uses `mostRecentWindow()`:
+  ##   browser.fitSize()
+  ## The view is reparented to the window's content view and constrained to fill.
+  let targetWin = if win.isNil: mostRecentWindow() else: win
+  if targetWin.isNil or w.isNil: return
+  when defined(linux) or defined(macosx) or defined(ios):
+    let cvPtr = targetWin.contentView
+    if not cvPtr.isNil:
+      w.removeFromParent()
+      naViewAddSubview(cvPtr, w.native)
+      w.fillParent()
+      let cs = targetWin.getContentSize()
+      if cs.width > 0 and cs.height > 0:
+        w.setFrameRect(rectangle(0, 0, cs.width, cs.height))
+      else:
+        let s = targetWin.getSize()
+        if s.width > 0 and s.height > 0:
+          w.setFrameRect(rectangle(0, 0, s.width, s.height))
+    let wm = sharedWindowManager()
+    discard wm.addListener(proc(e: WindowResizedEvent) =
+      if e.windowId == targetWin.id:
+        w.setFrameRect(rectangle(0, 0, e.newSize.width, e.newSize.height))
+    )
+
+proc fitBelowToolbarHeight*(w: WebView, toolbarHeight: float, win: Window = nil) =
+  ## Create a container `calc(100vh - toolbarHeight)` and make WebView fill it.
+  ## Container is `window.width x (window.height - toolbarHeight)` at y=0,
+  ## toolbar is expected to be positioned by caller or via `fitBelowView`.
+  let targetWin = if win.isNil: mostRecentWindow() else: win
+  if targetWin.isNil or w.isNil: return
+  when defined(linux) or defined(macosx) or defined(ios):
+    let cvPtr = targetWin.contentView
+    if cvPtr.isNil: return
+    if w.fitContainer.isNil:
+      w.fitContainer = newPlainView()
+    w.fitContainer.removeFromParent()
+    w.removeFromParent()
+    naViewAddSubview(cvPtr, w.fitContainer.native)
+    w.fitContainer.addSubview(w)
+    w.fillParent()
+    w.fitWindowId = targetWin.id
+    proc update() =
+      let cs = targetWin.getContentSize()
+      var cw = cs.width
+      var ch = cs.height
+      if cw <= 0 or ch <= 0:
+        let s = targetWin.getSize()
+        cw = s.width; ch = s.height
+      if cw <= 0 or ch <= 0: return
+      let th = toolbarHeight
+      let containerH = max(ch - th, 0.0)
+      w.fitContainer.setFrameRect(rectangle(0, 0, cw, containerH))
+      w.setFrameRect(rectangle(0, 0, cw, containerH))
+    update()
+    let wm = sharedWindowManager()
+    discard wm.addListener(proc(e: WindowResizedEvent) =
+      if e.windowId == targetWin.id:
+        update()
+    )
+
+proc fitBelowView*(w: WebView, toolbarView: View, win: Window = nil) =
+  ## Dynamic `calc(100vh - toolbarView.height)`: container fills window minus toolbar,
+  ## WebView fills container 100%. Toolbar is reparented to window and kept at top.
+  let targetWin = if win.isNil: mostRecentWindow() else: win
+  if targetWin.isNil or w.isNil or toolbarView.isNil: return
+  when defined(linux) or defined(macosx) or defined(ios):
+    let cvPtr = targetWin.contentView
+    if cvPtr.isNil: return
+    if w.fitContainer.isNil:
+      w.fitContainer = newPlainView()
+    w.fitToolbar = toolbarView
+    w.fitWindowId = targetWin.id
+    # Reparent toolbar and container to window's content view
+    toolbarView.removeFromParent()
+    w.fitContainer.removeFromParent()
+    w.removeFromParent()
+    naViewAddSubview(cvPtr, w.fitContainer.native)
+    naViewAddSubview(cvPtr, toolbarView.native)
+    w.fitContainer.addSubview(w)
+    w.fillParent()
+    proc update() =
+      let cs = targetWin.getContentSize()
+      var cw = cs.width
+      var ch = cs.height
+      if cw <= 0 or ch <= 0:
+        let s = targetWin.getSize()
+        cw = s.width; ch = s.height
+      if cw <= 0 or ch <= 0: return
+      var th = toolbarView.getFrameRect().height
+      if th <= 0.5:
+        let ms = toolbarView.measure()
+        th = ms.height
+      if th <= 0.5:
+        th = 50.0
+      let containerH = max(ch - th, 0.0)
+      # Container at bottom (y=0), toolbar at top (y=containerH)
+      w.fitContainer.setFrameRect(rectangle(0, 0, cw, containerH))
+      toolbarView.setFrameRect(rectangle(0, containerH, cw, th))
+      w.setFrameRect(rectangle(0, 0, cw, containerH))
+    update()
+    let wm = sharedWindowManager()
+    discard wm.addListener(proc(e: WindowResizedEvent) =
+      if e.windowId == targetWin.id:
+        update()
+    )
 
 # live count helper for tests
 proc liveWebViewCount*(): int = liveWebViews.len

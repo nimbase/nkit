@@ -49,13 +49,51 @@ static WinState *find_win(uint32_t id) {
   return (WinState *)g_hash_table_lookup(g_windows, GUINT_TO_POINTER(id));
 }
 
+static gboolean on_win_focus_in(GtkWidget *w, GdkEventFocus *e, gpointer ud) {
+  (void)e; (void)w;
+  uint32_t id = GPOINTER_TO_UINT(ud);
+  WinState *st = find_win(id);
+  if (st) {
+    DBG_LOG("[NKIT][WINDOW] focus-in id=%u size %.0fx%.0f\n", id, st->w, st->h);
+  }
+  return FALSE;
+}
+static gboolean on_win_focus_out(GtkWidget *w, GdkEventFocus *e, gpointer ud) {
+  (void)e; (void)w;
+  uint32_t id = GPOINTER_TO_UINT(ud);
+  WinState *st = find_win(id);
+  if (st) {
+    DBG_LOG("[NKIT][WINDOW] focus-out id=%u size %.0fx%.0f\n", id, st->w, st->h);
+  }
+  return FALSE;
+}
+
+static void on_win_size_allocate(GtkWidget *widget, GtkAllocation *allocation, gpointer user_data) {
+  (void)widget;
+  uint32_t id = GPOINTER_TO_UINT(user_data);
+  WinState *st = find_win(id);
+  if (!st) return;
+  int nw = allocation->width;
+  int nh = allocation->height;
+  DBG_LOG("[NKIT][WINDOW] size-allocate id=%u %dx%d (prev %.0fx%.0f)\n",
+          id, nw, nh, st->w, st->h);
+  if (nw == (int)st->w && nh == (int)st->h) return;
+  st->w = (double)nw;
+  st->h = (double)nh;
+  if (st->root) {
+    NkitViewState *rst = nkit_state_of(st->root);
+    if (rst) { rst->w = st->w; rst->h = st->h; }
+  }
+  if (g_win_fn) g_win_fn(5, id, (double)nw, (double)nh, g_win_ctx);
+}
+
 static GtkWidget *make_root_container(void) {
-  GtkWidget *f = gtk_fixed_new();
-  gtk_widget_set_hexpand(f, TRUE);
-  gtk_widget_set_vexpand(f, TRUE);
-  gtk_widget_set_halign(f, GTK_ALIGN_FILL);
-  gtk_widget_set_valign(f, GTK_ALIGN_FILL);
-  return f;
+  GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_set_hexpand(box, TRUE);
+  gtk_widget_set_vexpand(box, TRUE);
+  gtk_widget_set_halign(box, GTK_ALIGN_FILL);
+  gtk_widget_set_valign(box, GTK_ALIGN_FILL);
+  return box;
 }
 
 uint32_t na_window_create(void) {
@@ -94,6 +132,9 @@ uint32_t na_window_create(void) {
   g_hash_table_insert(g_windows, GUINT_TO_POINTER(id), st);
   g_object_set_data(G_OBJECT(win), "nkit-window-id",
                     GUINT_TO_POINTER(id));
+  g_signal_connect(win, "size-allocate", G_CALLBACK(on_win_size_allocate), GUINT_TO_POINTER(id));
+  g_signal_connect(win, "focus-in-event", G_CALLBACK(on_win_focus_in), GUINT_TO_POINTER(id));
+  g_signal_connect(win, "focus-out-event", G_CALLBACK(on_win_focus_out), GUINT_TO_POINTER(id));
   return id;
 }
 
@@ -113,15 +154,13 @@ bool na_window_exists(uint32_t id) { return find_win(id) != NULL; }
 void na_window_focus(uint32_t id) {
   WinState *st = find_win(id);
   if (!st) return;
-#if !NA_GTK4
+  DBG_LOG("[NKIT][WINDOW] focus id=%u\n", id);
   gtk_window_present(GTK_WINDOW(st->win));
-#else
-  gtk_window_present(GTK_WINDOW(st->win));
-#endif
 }
 
 void na_window_blur(uint32_t id) {
-  (void)id; // No cross-platform blur; compositor owns focus.
+  DBG_LOG("[NKIT][WINDOW] blur id=%u\n", id);
+  (void)id;
 }
 
 bool na_window_is_focused(uint32_t id) {
@@ -133,6 +172,7 @@ bool na_window_is_focused(uint32_t id) {
 void na_window_show(uint32_t id) {
   WinState *st = find_win(id);
   if (!st) return;
+  DBG_LOG("[NKIT][WINDOW] show id=%u size %.0fx%.0f\n", id, st->w, st->h);
   st->visible = true;
   na_compat_show(st->win);
 #if !NA_GTK4
@@ -503,11 +543,25 @@ void na_window_set_root_view(uint32_t id, void *view_ptr) {
   na_view_remove_all((void*)container);
   NkitViewState *rst = nkit_state_of(root);
   rst->x = 0; rst->y = 0; rst->w = st->w; rst->h = st->h;
+  /* Always expand root view to fill window container */
   gtk_widget_set_hexpand(root, TRUE);
   gtk_widget_set_vexpand(root, TRUE);
   gtk_widget_set_halign(root, GTK_ALIGN_FILL);
   gtk_widget_set_valign(root, GTK_ALIGN_FILL);
-  gtk_widget_set_size_request(root, -1, -1);
-  na_view_add_subview((void*)container, root);
+  /* Pack with expand=true so root fills the window */
+  if (GTK_IS_BOX(container)) {
+#if NA_GTK4
+    gtk_box_append(GTK_BOX(container), root);
+#else
+    gtk_box_pack_start(GTK_BOX(container), root, TRUE, TRUE, 0);
+#endif
+  } else {
+    na_view_add_subview((void*)container, root);
+  }
+#if !NA_GTK4
+  gtk_widget_show_all(root);
+#else
+  gtk_widget_set_visible(root, TRUE);
+#endif
   gtk_widget_queue_resize(container);
 }
