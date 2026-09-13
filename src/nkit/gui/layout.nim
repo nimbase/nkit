@@ -199,7 +199,9 @@ proc applyBoxProps*(n: LayoutNode) =
 proc installLayout*(win: Window, root: ViewNode) =
   ## Makes the node tree the window's content. With GtkBox the native
   ## containers handle sizing/positioning — we only need to build the
-  ## widget tree and set box properties once. No re-layout on resize.
+  ## widget tree and set box properties once. Everywhere else the
+  ## portable solver drives frames, so it runs once now and again on
+  ## every window resize.
   when defined(nkitTrace):
     proc llog(msg: string) =
       let f = open("/tmp/nkit_nim.log", fmAppend)
@@ -212,6 +214,15 @@ proc installLayout*(win: Window, root: ViewNode) =
   ## on ViewNodes BEFORE attachViews packs children into their parents.
   applyBoxProps(root)
   attachViews(root)
+  when not defined(linux):
+    proc apply() =
+      let cs = win.getContentSize()
+      applyLayout(root, cs)
+    apply()
+    let wm = sharedWindowManager()
+    discard wm.addListener(proc(e: WindowResizedEvent) =
+      if e.windowId == win.id:
+        apply())
 
 template layout*(body: untyped) =
   ## Mounts the produced tree on the most recently created window:

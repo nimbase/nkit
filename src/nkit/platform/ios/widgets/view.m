@@ -40,6 +40,13 @@ void na_view_set_frame(void* view_ptr, double x, double y,
   }
 }
 
+// UIKit has no Gtk-style size-request queue; setting the frame directly
+// is already synchronous, so this is identical to na_view_set_frame.
+void na_view_set_frame_no_request(void* view_ptr, double x, double y,
+                                  double w, double h) {
+  na_view_set_frame(view_ptr, x, y, w, h);
+}
+
 void na_view_get_frame(void* view_ptr, double* out_x, double* out_y,
                        double* out_w, double* out_h) {
   UIView* view = (__bridge UIView*)view_ptr;

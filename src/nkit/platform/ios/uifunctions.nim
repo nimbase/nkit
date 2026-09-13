@@ -245,6 +245,8 @@ proc naViewCreate*(): pointer {.importc: "na_view_create".}
 proc naViewDestroy*(viewPtr: pointer) {.importc: "na_view_destroy".}
 proc naViewSetFrame*(viewPtr: pointer, x, y, w, h: float64) {.
   importc: "na_view_set_frame".}
+proc naViewSetFrameNoRequest*(viewPtr: pointer, x, y, w, h: float64) {.
+  importc: "na_view_set_frame_no_request".}
 proc naViewGetFrame*(viewPtr: pointer, outX, outY, outW, outH: ptr float64) {.
   importc: "na_view_get_frame".}
 proc naViewAddSubview*(parentPtr, childPtr: pointer) {.
@@ -591,6 +593,26 @@ proc naInputIsEditable*(viewPtr: pointer): bool {.
 proc naInputFocus*(widgetId: uint32; viewPtr: pointer) {.
   importc: "na_input_focus".}
 proc naInputFireChange*(widgetId: uint32) {.importc: "na_input_fire_change".}
+proc naInputFireSubmit*(widgetId: uint32) {.importc: "na_input_fire_submit".}
+
+# Linux-ported input event channels (focus/hover/key). Modifier bits:
+# 0=Shift, 1=Control, 2=Alt, 3=Command. Note: the key channel never fires
+# on iOS (no keycode API for software keyboards); the setter exists for
+# API parity only.
+type
+  NaInputFocusFn* = proc (widgetId: uint32; focused: bool;
+                          ctx: pointer) {.cdecl.}
+  NaInputHoverFn* = proc (widgetId: uint32; entered: bool;
+                          ctx: pointer) {.cdecl.}
+  NaInputKeyFn* = proc (widgetId: uint32; keyval, keycode, mods: uint32;
+                        pressed: bool; ctx: pointer) {.cdecl.}
+
+proc naInputSetFocusCallback*(fn: NaInputFocusFn; ctx: pointer) {.
+  importc: "na_input_set_focus_callback".}
+proc naInputSetHoverCallback*(fn: NaInputHoverFn; ctx: pointer) {.
+  importc: "na_input_set_hover_callback".}
+proc naInputSetKeyCallback*(fn: NaInputKeyFn; ctx: pointer) {.
+  importc: "na_input_set_key_callback".}
 
 # --- textarea ---------------------------------------------------------------
 

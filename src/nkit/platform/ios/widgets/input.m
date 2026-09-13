@@ -11,6 +11,20 @@ void na_input_set_event_callback(na_input_event_fn fn, void* ctx) {
   g_input_ctx = ctx;
 }
 
+// --- focus channel (keyboard focus in/out) ---
+// Declared before the target: EditingDidBegin/DidEnd route here as well
+// as to the legacy change/submit channel.
+
+typedef void (*na_input_focus_fn)(uint32_t widget_id, bool focused, void* ctx);
+
+static na_input_focus_fn g_input_focus_fn = NULL;
+static void* g_input_focus_ctx = NULL;
+
+void na_input_set_focus_callback(na_input_focus_fn fn, void* ctx) {
+  g_input_focus_fn = fn;
+  g_input_focus_ctx = ctx;
+}
+
 @interface NAInputTarget : NSObject
 @property(nonatomic, assign) uint32_t widgetId;
 @end
@@ -26,15 +40,78 @@ void na_input_set_event_callback(na_input_event_fn fn, void* ctx) {
     g_input_fn(_widgetId, (void*)1);
   }
 }
+- (void)editingDidBegin:(UITextField*)sender {
+  (void)sender;
+  if (g_input_focus_fn) {
+    g_input_focus_fn(_widgetId, true, g_input_focus_ctx);
+  }
+}
+- (void)editingDidEndResign:(UITextField*)sender {
+  (void)sender;
+  if (g_input_focus_fn) {
+    g_input_focus_fn(_widgetId, false, g_input_focus_ctx);
+  }
+}
 @end
 
+// --- hover channel (pointer hover via UIHoverGestureRecognizer; touch
+// devices never produce hover) ---
+
+typedef void (*na_input_hover_fn)(uint32_t widget_id, bool entered, void* ctx);
+
+static na_input_hover_fn g_input_hover_fn = NULL;
+static void* g_input_hover_ctx = NULL;
+
+void na_input_set_hover_callback(na_input_hover_fn fn, void* ctx) {
+  g_input_hover_fn = fn;
+  g_input_hover_ctx = ctx;
+}
+
+@interface NAInputHoverTarget : NSObject
+@property(nonatomic, assign) uint32_t widgetId;
+- (void)hoverChanged:(UIHoverGestureRecognizer*)recognizer;
+@end
+
+@implementation NAInputHoverTarget
+- (void)hoverChanged:(UIHoverGestureRecognizer*)recognizer {
+  if (!g_input_hover_fn) {
+    return;
+  }
+  if (recognizer.state == UIGestureRecognizerStateBegan) {
+    g_input_hover_fn(_widgetId, true, g_input_hover_ctx);
+  } else if (recognizer.state == UIGestureRecognizerStateEnded ||
+             recognizer.state == UIGestureRecognizerStateCancelled) {
+    g_input_hover_fn(_widgetId, false, g_input_hover_ctx);
+  }
+}
+@end
+
+// --- key channel ---
+// iOS exposes no keycode API for software keyboards, so this setter only
+// stores the callback for API parity; it never fires. Hardware-keyboard
+// key handling remains future work.
+
+typedef void (*na_input_key_fn)(uint32_t widget_id, uint32_t keyval,
+                                uint32_t keycode, uint32_t mods, bool pressed,
+                                void* ctx);
+
+static na_input_key_fn g_input_key_fn = NULL;
+static void* g_input_key_ctx = NULL;
+
+void na_input_set_key_callback(na_input_key_fn fn, void* ctx) {
+  g_input_key_fn = fn;
+  g_input_key_ctx = ctx;
+}
+
 static NSMutableDictionary<NSNumber*, NAInputTarget*>* g_input_targets = nil;
+static NSMutableDictionary<NSNumber*, NAInputHoverTarget*>* g_input_hover_targets = nil;
 
 static void ensure_input_tables(void) {
   static BOOL initialized = NO;
   if (!initialized) {
     initialized = YES;
     g_input_targets = [NSMutableDictionary dictionary];
+    g_input_hover_targets = [NSMutableDictionary dictionary];
   }
 }
 
@@ -71,6 +148,18 @@ void* na_input_create(uint32_t widget_id, int style) {
       forControlEvents:UIControlEventEditingChanged];
   [field addTarget:target action:@selector(editingDidEnd:)
       forControlEvents:UIControlEventEditingDidEndOnExit];
+  [field addTarget:target action:@selector(editingDidBegin:)
+      forControlEvents:UIControlEventEditingDidBegin];
+  [field addTarget:target action:@selector(editingDidEndResign:)
+      forControlEvents:UIControlEventEditingDidEnd];
+
+  NAInputHoverTarget* hoverTarget = [[NAInputHoverTarget alloc] init];
+  hoverTarget.widgetId = widget_id;
+  g_input_hover_targets[@(widget_id)] = hoverTarget;
+  UIHoverGestureRecognizer* hover =
+      [[UIHoverGestureRecognizer alloc] initWithTarget:hoverTarget
+                                               action:@selector(hoverChanged:)];
+  [field addGestureRecognizer:hover];
 
   na_gui_register_view(field);
   return (__bridge_retained void*)field;
@@ -83,6 +172,7 @@ void na_input_free(uint32_t widget_id, void* ptr) {
   [field removeFromSuperview];
   na_gui_unregister_view(field);
   [g_input_targets removeObjectForKey:@(widget_id)];
+  [g_input_hover_targets removeObjectForKey:@(widget_id)];
 }
 
 void na_input_set_text(void* ptr, const char* text) {
@@ -133,5 +223,11 @@ void na_input_focus(uint32_t widget_id, void* ptr) {
 void na_input_fire_change(uint32_t widget_id) {
   if (g_input_fn) {
     g_input_fn(widget_id, NULL);
+  }
+}
+
+void na_input_fire_submit(uint32_t widget_id) {
+  if (g_input_fn) {
+    g_input_fn(widget_id, (void*)1);
   }
 }

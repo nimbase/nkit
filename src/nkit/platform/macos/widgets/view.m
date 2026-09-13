@@ -162,6 +162,13 @@ void na_view_set_frame(void* ptr, double x, double y, double w, double h) {
   }
 }
 
+// Cocoa has no Gtk-style size-request queue; setting the frame directly
+// is already synchronous, so this is identical to na_view_set_frame.
+void na_view_set_frame_no_request(void* ptr, double x, double y, double w,
+                                  double h) {
+  na_view_set_frame(ptr, x, y, w, h);
+}
+
 void na_view_get_frame(void* ptr, double* outX, double* outY, double* outW, double* outH) {
   NSView* view = (__bridge NSView*)ptr;
   if (!view) {
