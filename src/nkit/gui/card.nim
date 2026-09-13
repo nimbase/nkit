@@ -1,10 +1,10 @@
-import nkit/foundation/color
-import nkit/foundation/event_emitter
-import nkit/gui/view
-import nkit/gui/label
-import nkit/gui/stack
-import nkit/gui/separator
-import nkit/gui/theme
+import ../foundation/color
+import ../foundation/event_emitter
+import ./view
+import ./label
+import ./stack
+import ./separator
+import ./theme
 
 export view, label, stack, separator
 

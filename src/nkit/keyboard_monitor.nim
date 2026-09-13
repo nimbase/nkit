@@ -1,18 +1,20 @@
-import nkit/foundation/event
-import nkit/foundation/keyboard
-import nkit/foundation/event_emitter
+import ./foundation/event
+import ./foundation/keyboard
+import ./foundation/event_emitter
 
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ./platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ./platform/macos/nsfunctions
+elif defined(linux):
+  import ./platform/linux/gfunctions
 
 type KeyboardMonitor* = ref object of EventEmitter[KeyboardEvent]
   running*: bool
 
 var globalKeyboardSink: proc(kind: int, keycode: int, modifiers: uint32) {.closure.}
 
-when defined(macosx) and not defined(ios):
+when defined(macosx) or defined(linux):
   proc keyboardTrampoline(kind: cint, keycode: cint, modifiers: cuint, ctx: pointer) {.cdecl.} =
     if not globalKeyboardSink.isNil:
       globalKeyboardSink(int(kind), int(keycode), uint32(modifiers))
@@ -24,7 +26,7 @@ proc newKeyboardMonitor*(): KeyboardMonitor =
 proc start*(km: KeyboardMonitor): bool =
   if km.running:
     return true
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     let selfRef = km
     if globalKeyboardSink.isNil:
       globalKeyboardSink = proc(kind: int, keycode: int, modifiers: uint32) =
@@ -45,13 +47,13 @@ proc start*(km: KeyboardMonitor): bool =
     false
 
 proc stop*(km: KeyboardMonitor) =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     if km.running:
       naKeyboardStop()
       km.running = false
 
 proc isMonitoring*(km: KeyboardMonitor): bool =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naKeyboardIsRunning()
   else:
     false

@@ -1,15 +1,19 @@
 import std/[tables, strutils]
-import nkit/foundation/event_emitter
-import nkit/shortcut
+import ./foundation/event_emitter
+import ./shortcut
 when defined(ios):
-  import nkit/platform/ios/dispatcher_ios
+  import ./platform/ios/dispatcher_ios
 elif defined(macosx):
-  import nkit/platform/macos/dispatcher_macos
+  import ./platform/macos/dispatcher_macos
+elif defined(linux):
+  import ./platform/linux/dispatcher_linux
 
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ./platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ./platform/macos/nsfunctions
+elif defined(linux):
+  import ./platform/linux/gfunctions
 
 const modifierTokens = [
   "ctrl", "control", "alt", "option", "shift", "cmd", "command",
@@ -134,7 +138,7 @@ proc newShortcutManager*(): ShortcutManager =
   initEmitter(result)
 
 proc isSupported*(sm: ShortcutManager): bool =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     true
   else:
     false
@@ -143,13 +147,13 @@ proc isAvailable*(sm: ShortcutManager, accelerator: string): bool =
   accelerator notin sm.byAccelerator
 
 proc platformRegister(sc: Shortcut): bool =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naHotkeyRegister(uint32(sc.id), sc.accelerator.cstring)
   else:
     false
 
 proc platformUnregister(sc: Shortcut): bool =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naHotkeyUnregister(uint32(sc.id))
   else:
     false
@@ -248,7 +252,7 @@ var sharedShortcutManagerInstance: ShortcutManager
 proc sharedShortcutManager*(): ShortcutManager =
   if sharedShortcutManagerInstance.isNil:
     result = newShortcutManager()
-    when defined(macosx) and not defined(ios):
+    when defined(macosx) or defined(linux):
       proc hotkeyTrampoline(id: cuint, ctx: pointer) {.cdecl.} =
         let sm = sharedShortcutManager()
         let sid = uint32(id).ShortcutId

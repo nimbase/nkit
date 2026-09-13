@@ -1,12 +1,14 @@
 import std/[sequtils]
-import nkit/foundation/event
-import nkit/foundation/geometry
-import nkit/foundation/event_emitter
+import ./foundation/event
+import ./foundation/geometry
+import ./foundation/event_emitter
 
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ./platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ./platform/macos/nsfunctions
+elif defined(linux):
+  import ./platform/linux/gfunctions
 
 export geometry
 
@@ -41,7 +43,7 @@ proc newMouseEvent*(kind: MouseActivityKind, position: Point,
                       clickCount: clickCount, global: isGlobal)
   discard stamp(result)
 
-when defined(macosx) and not defined(ios):
+when defined(macosx) or defined(linux):
   proc mouseTrampoline(kind: cint, x: cdouble, y: cdouble,
                        clicks: cint, ctx: pointer) {.cdecl.} =
     if kind < 0 or kind > ord(high(MouseActivityKind)):
@@ -58,7 +60,7 @@ proc startGlobal*(m: MouseMonitor): bool =
   ## System-wide monitor. macOS never delivers this app's own events here.
   if m.runningValue:
     return true
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     if naMouseStartMonitor(true, mouseTrampoline, nil):
       m.runningValue = true
       m.globalValue = true
@@ -73,7 +75,7 @@ proc startLocal*(m: MouseMonitor): bool =
   ## Monitors events targeting our own windows.
   if m.runningValue:
     return true
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     if naMouseStartMonitor(false, mouseTrampoline, nil):
       m.runningValue = true
       m.globalValue = false
@@ -85,7 +87,7 @@ proc startLocal*(m: MouseMonitor): bool =
     false
 
 proc stop*(m: MouseMonitor) =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     if m.runningValue:
       naMouseStopMonitors()
       m.runningValue = false
@@ -111,7 +113,7 @@ proc onMouseButton*(m: MouseMonitor,
 proc fireMouseSimulated*(kind: int, x, y: float64, clicks: int) =
   ## Test hook: feeds an event through the monitor pipeline as if the OS
   ## had delivered it.
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     mouseTrampoline(cint(kind), cdouble(x), cdouble(y), cint(clicks), nil)
 
 proc isGlobal*(m: MouseMonitor): bool =

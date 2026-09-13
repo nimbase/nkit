@@ -29,17 +29,17 @@ idiomatic Nim surface.
 
 ## Features
 
-- Unified system APIs across multiple platforms from a single import
-- Cross-platform desktop and mobile development in pure Nim
-- Based on simple C and Objective-C shims, compiled directly into your binary
-- No dynamic bridge, no runtime reflection
-- Access to low-level system APIs and bindings when you need full control
-- Native system GUI built on AppKit today, with other platforms on the way
-- Three API tiers so you can pick the right altitude per screen:
-  raw views, Flutter-style composition, or a macro DSL
-- A pure-Nim layout solver (rows, columns, flex, padding, alignment)
-  that drives native views and stays portable across backends
-- Beautiful macro-based application DSL with state and render blocks
+- Native widgets on macOS, iOS, and Linux using platform UI frameworks
+- Unified clipboard, notifications, dialogs, and system services
+- Global keyboard/mouse monitors and hotkey support
+- Secure storage with Keychain and libsecret integration
+- Dark and light theme with customizable accent colors
+- Flexible layout system with flex, alignment, and spacing controls
+- Three API tiers: low-level shims, compositional sugar, or macro DSL
+- Built-in WebView with full configuration support
+- Menu bar and system tray integration
+- Display management and multi-monitor handling
+- Cross-platform CLI for scaffolding, building, and running apps
 
 ### CLI application
 ```
@@ -198,9 +198,9 @@ Platform support:
 | --- | --- |
 | macOS (Cocoa/AppKit) | Done, active development |
 | Windows | Planned |
-| Linux | Planned |
-| iOS | active development |
-| Android | Planned |
+| Linux | Active development |
+| iOS | Active development |
+| Android | Active development |
 
 Planned work:
 

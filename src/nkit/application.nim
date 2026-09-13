@@ -1,17 +1,22 @@
 import std/monotimes
-import nkit/foundation/event
-import nkit/foundation/event_emitter
+import ./foundation/event
+import ./foundation/event_emitter
 
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ./platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ./platform/macos/nsfunctions
+elif defined(linux):
+  import ./platform/linux/gfunctions
 when defined(ios):
-  import nkit/platform/ios/dispatcher_ios
+  import ./platform/ios/dispatcher_ios
   export dispatcher_ios.ensurePlatformDispatcher
 elif defined(macosx):
-  import nkit/platform/macos/dispatcher_macos
+  import ./platform/macos/dispatcher_macos
   export dispatcher_macos.ensurePlatformDispatcher
+elif defined(linux):
+  import ./platform/linux/dispatcher_linux
+  export dispatcher_linux.ensurePlatformDispatcher
 
 type
   ApplicationEvent* = ref object of Event
@@ -49,16 +54,16 @@ proc newApplicationQuitRequestedEvent*(): ApplicationQuitRequestedEvent =
   result = ApplicationQuitRequestedEvent()
   discard stamp(result)
 
-import nkit/window
-import nkit/window_manager
-import nkit/menu
+import ./window
+import ./window_manager
+import ./menu
 
 type Application* = ref object of EventEmitter[ApplicationEvent]
   running*: bool
   exitCode*: int
   primaryWindow*: Window
 
-when defined(macosx) or defined(ios):
+when defined(macosx) or defined(ios) or defined(linux):
   proc onStartedTrampoline(ctx: pointer) {.cdecl.} =
     cast[Application](ctx).emit(newApplicationStartedEvent())
 
@@ -82,7 +87,7 @@ proc initApplication*(): Application =
   if sharedApp.isNil:
     result = Application()
     initEmitter(result)
-    when defined(macosx) or defined(ios):
+    when defined(macosx) or defined(ios) or defined(linux):
       ensurePlatformDispatcher()
       if naAppInit():
         naAppSetCallbacks(
@@ -99,7 +104,7 @@ proc initApplication*(): Application =
 
 proc run*(app: Application): int =
   app.running = true
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     result = int(naAppRun())
   else:
     result = 0
@@ -123,15 +128,15 @@ proc getAllWindows*(app: Application): seq[Window] =
 
 proc setDockMenu*(app: Application, menu: Menu) =
   ensureMenuCallbacks()
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naAppSetDockMenu(menu.nativeKey)
 
 proc clearDockMenu*(app: Application) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naAppSetDockMenu(0)
 
 proc getDockMenuKey*(app: Application): uint32 =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naAppDockMenu()
   else:
     0
@@ -139,11 +144,11 @@ proc getDockMenuKey*(app: Application): uint32 =
 proc quitApp*(app: Application, exitCode = 0) =
   app.exitCode = exitCode
   app.emit(newApplicationQuitRequestedEvent())
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naAppQuit()
 
 proc stopApp*(app: Application) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naAppStop()
 
 proc isRunning*(app: Application): bool =
@@ -153,13 +158,13 @@ proc isSingleInstance*(app: Application): bool =
   false
 
 proc setIcon*(app: Application, path: string): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naAppSetIcon(path.cstring)
   else:
     false
 
 proc setDockIconVisible*(app: Application, visible: bool): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naAppSetDockIconVisible(visible)
   else:
     false

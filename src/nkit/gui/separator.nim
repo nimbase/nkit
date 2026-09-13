@@ -1,10 +1,12 @@
-import nkit/foundation/event_emitter
-import nkit/gui/view
+import ../foundation/event_emitter
+import ./view
 
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ../platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ../platform/macos/nsfunctions
+elif defined(linux):
+  import ../platform/linux/gfunctions
 
 export view
 
@@ -16,7 +18,7 @@ type
   Separator* = ref object of View
 
 proc newSeparator*(orientation: SeparatorOrientation = soHorizontal): Separator =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     let nativePtr = naSeparatorCreate(cint(ord(orientation)))
   else:
     let nativePtr: pointer = nil
@@ -24,11 +26,11 @@ proc newSeparator*(orientation: SeparatorOrientation = soHorizontal): Separator 
   discard wrapView(result, nativePtr)
 
 proc destroy*(s: Separator) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naSeparatorFree(s.native)
     s.native = nil
   shutdownEmitter[GuiEvent](s)
 
 proc setThickness*(s: Separator, thickness: float64) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naSeparatorSetThickness(s.native, thickness)

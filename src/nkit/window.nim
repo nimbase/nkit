@@ -1,12 +1,14 @@
-import nkit/foundation/event
-import nkit/foundation/geometry
-import nkit/foundation/id_allocator
-import nkit/foundation/color
+import ./foundation/event
+import ./foundation/geometry
+import ./foundation/id_allocator
+import ./foundation/color
 
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ./platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ./platform/macos/nsfunctions
+elif defined(linux):
+  import ./platform/linux/gfunctions
 
 type
   WindowId* = Id
@@ -35,7 +37,7 @@ proc mostRecentWindow*(): Window =
   mostRecentWindowValue
 
 proc newWindow*(): Window =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     let key = naWindowCreate()
   else:
     let key = allocate(typeTagWindow).uint32
@@ -53,15 +55,15 @@ func getKey*(w: Window): uint32 =
 # Focus
 
 proc focus*(w: Window) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowFocus(w.nativeKey)
 
 proc blur*(w: Window) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowBlur(w.nativeKey)
 
 proc isFocused*(w: Window): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowIsFocused(w.nativeKey)
   else:
     false
@@ -69,19 +71,19 @@ proc isFocused*(w: Window): bool =
 # Visibility
 
 proc show*(w: Window) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowShow(w.nativeKey)
 
 proc showInactive*(w: Window) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowShowInactive(w.nativeKey)
 
 proc hide*(w: Window) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowHide(w.nativeKey)
 
 proc isVisible*(w: Window): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowIsVisible(w.nativeKey)
   else:
     false
@@ -89,39 +91,39 @@ proc isVisible*(w: Window): bool =
 # State
 
 proc maximize*(w: Window) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowMaximize(w.nativeKey)
 
 proc unmaximize*(w: Window) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowUnmaximize(w.nativeKey)
 
 proc isMaximized*(w: Window): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowIsMaximized(w.nativeKey)
   else:
     false
 
 proc minimize*(w: Window) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowMinimize(w.nativeKey)
 
 proc restore*(w: Window) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowRestore(w.nativeKey)
 
 proc isMinimized*(w: Window): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowIsMinimized(w.nativeKey)
   else:
     false
 
 proc setFullScreen*(w: Window, fullScreen: bool) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetFullScreen(w.nativeKey, fullScreen)
 
 proc isFullScreen*(w: Window): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowIsFullScreen(w.nativeKey)
   else:
     false
@@ -129,11 +131,11 @@ proc isFullScreen*(w: Window): bool =
 # Bounds and size
 
 proc setBounds*(w: Window, bounds: Rectangle) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetBounds(w.nativeKey, bounds.x, bounds.y, bounds.width, bounds.height)
 
 proc getBounds*(w: Window): Rectangle =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     var x, y, wd, h: float64
     naWindowGetBounds(w.nativeKey, addr x, addr y, addr wd, addr h)
     Rectangle(x: x, y: y, width: wd, height: h)
@@ -141,11 +143,11 @@ proc getBounds*(w: Window): Rectangle =
     Rectangle()
 
 proc setSize*(w: Window, size: Size, animate = false) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetSize(w.nativeKey, size.width, size.height, animate)
 
 proc getSize*(win: Window): Size =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     var fw, fh: float64
     naWindowGetSize(win.nativeKey, addr fw, addr fh)
     Size(width: fw, height: fh)
@@ -153,19 +155,19 @@ proc getSize*(win: Window): Size =
     Size()
 
 proc setContentSize*(w: Window, size: Size) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetContentSize(w.nativeKey, size.width, size.height)
 
 proc setMaxSize*(w: Window, maxSize: Size) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetMaxSize(w.nativeKey, maxSize.width, maxSize.height)
 
 proc setMinSize*(w: Window, minSize: Size) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetMinSize(w.nativeKey, minSize.width, minSize.height)
 
 proc getContentSize*(win: Window): Size =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     var fw, fh: float64
     naWindowGetContentSize(win.nativeKey, addr fw, addr fh)
     Size(width: fw, height: fh)
@@ -173,11 +175,11 @@ proc getContentSize*(win: Window): Size =
     Size()
 
 proc setContentBounds*(w: Window, bounds: Rectangle) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetContentBounds(w.nativeKey, bounds.x, bounds.y, bounds.width, bounds.height)
 
 proc getContentBounds*(w: Window): Rectangle =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     var x, y, wd, h: float64
     naWindowGetContentBounds(w.nativeKey, addr x, addr y, addr wd, addr h)
     Rectangle(x: x, y: y, width: wd, height: h)
@@ -185,11 +187,11 @@ proc getContentBounds*(w: Window): Rectangle =
     Rectangle()
 
 proc setMinimumSize*(w: Window, size: Size) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetMinimumSize(w.nativeKey, size.width, size.height)
 
 proc getMinimumSize*(win: Window): Size =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     var fw, fh: float64
     naWindowGetMinimumSize(win.nativeKey, addr fw, addr fh)
     Size(width: fw, height: fh)
@@ -197,11 +199,11 @@ proc getMinimumSize*(win: Window): Size =
     Size()
 
 proc setMaximumSize*(w: Window, size: Size) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetMaximumSize(w.nativeKey, size.width, size.height)
 
 proc getMaximumSize*(win: Window): Size =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     var fw, fh: float64
     naWindowGetMaximumSize(win.nativeKey, addr fw, addr fh)
     Size(width: fw, height: fh)
@@ -209,11 +211,11 @@ proc getMaximumSize*(win: Window): Size =
     Size()
 
 proc setPosition*(w: Window, position: Point) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetPosition(w.nativeKey, position.x, position.y)
 
 proc getPosition*(w: Window): Point =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     var x, y: float64
     naWindowGetPosition(w.nativeKey, addr x, addr y)
     Point(x: x, y: y)
@@ -221,17 +223,17 @@ proc getPosition*(w: Window): Point =
     Point()
 
 proc center*(w: Window) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowCenter(w.nativeKey)
 
 # Title
 
 proc setTitle*(w: Window, title: string) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetTitle(w.nativeKey, title.cstring)
 
 proc getTitle*(w: Window): string =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     $naWindowGetTitle(w.nativeKey)
   else:
     ""
@@ -239,87 +241,87 @@ proc getTitle*(w: Window): string =
 # Behavior
 
 proc setResizable*(w: Window, resizable: bool) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetResizable(w.nativeKey, resizable)
 
 proc isResizable*(w: Window): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowIsResizable(w.nativeKey)
   else:
     false
 
 proc setMovable*(w: Window, movable: bool) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetMovable(w.nativeKey, movable)
 
 proc isMovable*(w: Window): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowIsMovable(w.nativeKey)
   else:
     false
 
 proc setMinimizable*(w: Window, minimizable: bool) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetMinimizable(w.nativeKey, minimizable)
 
 proc isMinimizable*(w: Window): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowIsMinimizable(w.nativeKey)
   else:
     false
 
 proc setMaximizable*(w: Window, maximizable: bool) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetMaximizable(w.nativeKey, maximizable)
 
 proc isMaximizable*(w: Window): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowIsMaximizable(w.nativeKey)
   else:
     false
 
 proc setClosable*(w: Window, closable: bool) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetClosable(w.nativeKey, closable)
 
 proc isClosable*(w: Window): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowIsClosable(w.nativeKey)
   else:
     false
 
 proc setAlwaysOnTop*(w: Window, alwaysOnTop: bool) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetAlwaysOnTop(w.nativeKey, alwaysOnTop)
 
 proc isAlwaysOnTop*(w: Window): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowIsAlwaysOnTop(w.nativeKey)
   else:
     false
 
 proc setVisibleOnAllWorkspaces*(w: Window, visible: bool) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetVisibleOnAllWorkspaces(w.nativeKey, visible)
 
 proc isVisibleOnAllWorkspaces*(w: Window): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowIsVisibleOnAllWorkspaces(w.nativeKey)
   else:
     false
 
 proc setIgnoreMouseEvents*(w: Window, ignore: bool) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetIgnoreMouseEvents(w.nativeKey, ignore)
 
 proc isIgnoreMouseEvents*(w: Window): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowIsIgnoreMouseEvents(w.nativeKey)
   else:
     false
 
 proc isFocusable*(w: Window): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowIsFocusable(w.nativeKey)
   else:
     true
@@ -327,51 +329,51 @@ proc isFocusable*(w: Window): bool =
 # Appearance
 
 proc setTitleBarStyle*(w: Window, style: TitleBarStyle) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetTitleBarStyle(w.nativeKey, cint(ord(style)))
 
 proc getTitleBarStyle*(w: Window): TitleBarStyle =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     TitleBarStyle(naWindowGetTitleBarStyle(w.nativeKey))
   else:
     tsNormal
 
 proc setHasShadow*(w: Window, hasShadow: bool) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetHasShadow(w.nativeKey, hasShadow)
 
 proc hasShadow*(w: Window): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowHasShadow(w.nativeKey)
   else:
     false
 
 proc setOpacity*(w: Window, opacity: float32) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetOpacity(w.nativeKey, opacity.cfloat)
 
 proc getOpacity*(w: Window): float32 =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     float32(naWindowGetOpacity(w.nativeKey))
   else:
     1.0'f32
 
 proc setVisualEffect*(w: Window, effect: VisualEffect) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetVisualEffect(w.nativeKey, cint(ord(effect)))
 
 proc getVisualEffect*(w: Window): VisualEffect =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     VisualEffect(naWindowGetVisualEffect(w.nativeKey))
   else:
     veNone
 
 proc setBackgroundColor*(w: Window, color: Color) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetBackgroundColor(w.nativeKey, color.r, color.g, color.b, color.a)
 
 proc getBackgroundColor*(w: Window): Color =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     var r, g, b, a: uint8
     naWindowGetBackgroundColor(w.nativeKey, addr r, addr g, addr b, addr a)
     Color(r: r, g: g, b: b, a: a)
@@ -381,7 +383,7 @@ proc getBackgroundColor*(w: Window): Color =
 # Interaction
 
 proc startDragging*(w: Window) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowStartDragging(w.nativeKey)
 
 proc startResizing*(w: Window) =
@@ -424,10 +426,10 @@ proc newWindowResizedEvent*(windowId: WindowId, newSize: Size): WindowResizedEve
   discard stamp(result)
 
 proc free*(w: Window) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowFree(w.nativeKey)
 
 proc contentView*(w: Window): pointer =
   ## Raw platform content view pointer (NSView* on macOS).
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naWindowContentView(w.nativeKey)

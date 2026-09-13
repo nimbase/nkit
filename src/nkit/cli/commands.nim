@@ -1,9 +1,9 @@
 import std/[os, strutils]
 import pkg/kapsis
 import pkg/kapsis/interactive/prompts
-import nkit/cli/project
-import nkit/cli/ios
-import nkit/cli/scaffold
+import ./project
+import ./ios
+import ./scaffold
 
 ## Implementations of the nkit CLI commands, loaded by src/nkit.nim
 ## inside its `when isMainModule` branch.
@@ -22,6 +22,7 @@ proc platformFromValue(s: string): Platform =
   case s
   of "ios": result = pfIos
   of "macos": result = pfMacos
+  of "linux": result = pfLinux
   else: displayError("unsupported platform: " & s, quitProcess = true)
 
 proc packageManagerFromValue(v: Values): string =
@@ -87,7 +88,10 @@ proc buildCommand*(v: Values) =
   setCurrentDir(projectDir)
 
   let outDir = "build"
-  createDir(appBundlePath(platform, outDir, cfg.name))
+  if platform == pfLinux:
+    createDir(outDirFor(platform, outDir))
+  else:
+    createDir(appBundlePath(platform, outDir, cfg.name))
 
   case platform
   of pfIos:
@@ -113,9 +117,21 @@ proc buildCommand*(v: Values) =
       forwardExtras()
     if runStreaming(cmd) != 0:
       displayError("build failed", quitProcess = true)
+  of pfLinux:
+    upsertPlatformConfig(pfLinux, cfg, "")
+    displayInfo("building " & cfg.name & " for Linux")
+    let nimArgs =
+      if pkgman == "clue":
+        @["-o:\"" & outDirFor(pfLinux, outDir) & "\""]
+      else:
+        composeNimArgs(pfLinux, cfg, "", outDir, release)
+    let cmd = pkgman & " build " & join(nimArgs, " ") & forwardExtras()
+    if runStreaming(cmd) != 0:
+      displayError("build failed", quitProcess = true)
 
-  writeFile(appBundlePath(platform, outDir, cfg.name) / "Info.plist",
-    renderInfoPlist(cfg.name, cfg.ios.bundle_id, cfg.version))
+  if platform != pfLinux:
+    writeFile(appBundlePath(platform, outDir, cfg.name) / "Info.plist",
+      renderInfoPlist(cfg.name, cfg.ios.bundle_id, cfg.version))
 
   let bundleExe = executablePath(platform, outDir, cfg.name)
   if not fileExists(bundleExe):
@@ -160,6 +176,11 @@ proc runCommand*(v: Values) =
       " (stream logs: nkit logs ios)")
   of pfMacos:
     openMacApp(appBundlePath(pfMacos, "build", cfg.name))
+  of pfLinux:
+    let bin = executablePath(pfLinux, "build", cfg.name)
+    displayInfo("running " & bin)
+    if runLinuxApp(bin) != 0:
+      displayError("failed to run " & bin, quitProcess = true)
 
 proc logsCommand*(v: Values) =
   let platform = platformFromValue(v.get("platform").getAny)

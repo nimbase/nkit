@@ -1,11 +1,13 @@
 import std/[monotimes, times, math]
-import nkit/gui/view
-import nkit/foundation/dispatcher
+import ./view
+import ../foundation/dispatcher
 when defined(ios):
-  import nkit/platform/ios/dispatcher_ios
+  import ../platform/ios/dispatcher_ios
 elif defined(macosx):
-  import nkit/platform/macos/dispatcher_macos
-import nkit/foundation/geometry
+  import ../platform/macos/dispatcher_macos
+elif defined(linux):
+  import ../platform/linux/dispatcher_linux
+import ../foundation/geometry
 
 export view, geometry
 

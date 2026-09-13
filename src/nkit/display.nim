@@ -1,11 +1,13 @@
-import nkit/foundation/event
-import nkit/foundation/geometry
-import nkit/foundation/id_allocator
+import ./foundation/event
+import ./foundation/geometry
+import ./foundation/id_allocator
 
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ./platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ./platform/macos/nsfunctions
+elif defined(linux):
+  import ./platform/linux/gfunctions
 
 type
   DisplayId* = Id
@@ -29,13 +31,13 @@ func getId*(d: Display): DisplayId =
   d.id
 
 proc getName*(d: Display): string =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     $naScreenGetName(d.nativeKey)
   else:
     ""
 
 proc getPosition*(d: Display): Point =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     var x, y, w, h: float64
     naScreenGetFrame(d.nativeKey, addr x, addr y, addr w, addr h)
     Point(x: x, y: y)
@@ -43,7 +45,7 @@ proc getPosition*(d: Display): Point =
     Point()
 
 proc getSize*(d: Display): Size =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     var x, y, w, h: float64
     naScreenGetFrame(d.nativeKey, addr x, addr y, addr w, addr h)
     Size(width: w, height: h)
@@ -51,7 +53,7 @@ proc getSize*(d: Display): Size =
     Size()
 
 proc getWorkArea*(d: Display): Rectangle =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     var x, y, w, h: float64
     naScreenGetWorkArea(d.nativeKey, addr x, addr y, addr w, addr h)
     Rectangle(x: x, y: y, width: w, height: h)
@@ -59,13 +61,13 @@ proc getWorkArea*(d: Display): Rectangle =
     Rectangle()
 
 func getScaleFactor*(d: Display): float64 =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naScreenGetScaleFactor(d.nativeKey)
   else:
     1.0
 
 proc isPrimary*(d: Display): bool =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naScreenIsPrimary(d.nativeKey)
   else:
     false
@@ -78,7 +80,7 @@ proc getOrientation*(d: Display): DisplayOrientation =
     doPortrait
 
 func getRefreshRate*(d: Display): int =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     int(naScreenGetRefreshRate(d.nativeKey))
   else:
     60

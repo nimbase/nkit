@@ -1,6 +1,6 @@
 import std/[os, strutils, osproc]
 import pkg/openparser/regex
-import nkit/cli/project
+import ./project
 
 ## iOS build pipeline helpers for the nkit CLI.
 ##
@@ -12,17 +12,26 @@ type
   Platform* = enum
     pfIos
     pfMacos
+    pfLinux
 
 proc hostArch*(): string =
   ## Canonical clang-triple arch of the machine running the CLI
   ## ("arm64" / "x86_64"), detected at runtime so one binary serves
   ## both Mac types.  Uses hw.machine (reports real hardware even
-  ## under Rosetta) rather than uname -m (reports emulated arch).
+  ## under Rosetta) rather than uname -m (reports emulated arch);
+  ## falls back to uname -m on Linux.
   let (outp, code) = execCmdEx("sysctl -n hw.machine")
   if code == 0:
     let m = strip(outp)
     if m in ["arm64", "x86_64"]:
       return m
+  let (uout, ucode) = execCmdEx("uname -m")
+  if ucode == 0:
+    let m = strip(uout)
+    if m in ["aarch64", "arm64"]:
+      return "arm64"
+    if m in ["x86_64", "amd64"]:
+      return "x86_64"
   when defined(arm64):
     result = "arm64"
   else:
@@ -36,13 +45,18 @@ func outDirFor*(platform: Platform, outDir: string): string =
   case platform
   of pfIos: outDir / "ios-simulator"
   of pfMacos: outDir / "macos"
+  of pfLinux: outDir / "linux"
 
 func appBundlePath*(platform: Platform, outDir, appName: string): string =
-  outDirFor(platform, outDir) / (appName & ".app")
+  case platform
+  of pfLinux: outDirFor(platform, outDir) / appName
+  else: outDirFor(platform, outDir) / (appName & ".app")
 
 func executablePath*(platform: Platform, outDir,
                      appName: string): string =
-  appBundlePath(platform, outDir, appName) / appName
+  case platform
+  of pfLinux: appBundlePath(platform, outDir, appName)
+  else: appBundlePath(platform, outDir, appName) / appName
 
 func simulatorTriple*(cpu, minVersion: string): string =
   cpu & "-apple-ios" & minVersion & "-simulator"
@@ -77,6 +91,12 @@ proc renderPlatformCfg*(platform: Platform, minVersion,
                         sdkPath: string): string =
   ## Compiler flags for the target platform. Quoting here is parsed by
   ## nim's config loader, so spaces are safe.
+  if platform == pfLinux:
+    result = "--os:linux\n--cpu:" & hostCpu() & "\n--cc:gcc\n"
+    let nkitSrc = nkitSrcPath()
+    if nkitSrc.len > 0:
+      result.add("--path:\"" & nkitSrc & "\"\n")
+    return result
   result = "--os:macosx\n--cpu:" & hostCpu() & "\n--cc:clang\n"
   let nkitSrc = nkitSrcPath()
   if nkitSrc.len > 0:
@@ -257,3 +277,6 @@ proc installSimulatorRuntime*(name: string): int =
 
 proc openMacApp*(bundlePath: string) =
   discard runStreaming("open \"" & bundlePath & "\"")
+
+proc runLinuxApp*(binaryPath: string): int =
+  runStreaming("\"" & binaryPath & "\"")

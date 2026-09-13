@@ -1,8 +1,8 @@
-import nkit/foundation/color
-import nkit/foundation/event_emitter
-import nkit/gui/view
-import nkit/gui/label
-import nkit/gui/theme
+import ../foundation/color
+import ../foundation/event_emitter
+import ./view
+import ./label
+import ./theme
 
 export view, label
 
@@ -34,7 +34,7 @@ proc badgeForeground(variant: BadgeVariant): Color =
 
 proc applyBadgeVariant*(b: Badge, variant: BadgeVariant) =
   b.variantValue = variant
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     setBackgroundColor(b, badgeBackground(variant))
     if not b.textLabel.isNil:
       setTextColor(b.textLabel, badgeForeground(variant))
@@ -63,7 +63,7 @@ proc destroy*(b: Badge) =
   shutdownEmitter[GuiEvent](b)
 
 proc setText*(b: Badge, text: string) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     if not b.textLabel.isNil:
       setText(b.textLabel, text)
 

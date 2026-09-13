@@ -1,13 +1,15 @@
 import std/tables
-import nkit/foundation/id_allocator
-import nkit/foundation/event
-import nkit/foundation/event_emitter
-import nkit/gui/view
+import ../foundation/id_allocator
+import ../foundation/event
+import ../foundation/event_emitter
+import ./view
 
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ../platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ../platform/macos/nsfunctions
+elif defined(linux):
+  import ../platform/linux/gfunctions
 
 export view
 
@@ -30,7 +32,7 @@ proc newDateChangedEvent*(datePickerId: Id, unixSeconds: float64): DateChangedEv
   result = DateChangedEvent(datePickerId: datePickerId, unixSeconds: unixSeconds)
   discard stamp(result)
 
-when defined(macosx) or defined(ios):
+when defined(macosx) or defined(ios) or defined(linux):
   proc datepickerEventTrampoline(widgetId: uint32, seconds: float64, ctx: pointer) {.cdecl.} =
     let dp = liveDatePickers.getOrDefault(widgetId)
     if not dp.isNil:
@@ -39,7 +41,7 @@ when defined(macosx) or defined(ios):
 var datepickerCallbacksArmed = false
 
 proc ensureDatePickerCallbacks*() =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     if not datepickerCallbacksArmed:
       naDatePickerSetEventCallback(datepickerEventTrampoline, nil)
       datepickerCallbacksArmed = true
@@ -47,7 +49,7 @@ proc ensureDatePickerCallbacks*() =
 proc newDatePicker*(style: DatePickerStyle = dpsTextField): DatePicker =
   ensureDatePickerCallbacks()
   let vid = allocate(typeTagGuiWidget)
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     let nativePtr = naDatePickerCreate(vid.uint32, cint(ord(style)))
   else:
     let nativePtr: pointer = nil
@@ -56,18 +58,18 @@ proc newDatePicker*(style: DatePickerStyle = dpsTextField): DatePicker =
   liveDatePickers[vid.uint32] = result
 
 proc destroy*(dp: DatePicker) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naDatePickerFree(dp.nativeKey, dp.native)
     dp.native = nil
   liveDatePickers.del(dp.nativeKey)
   shutdownEmitter[GuiEvent](dp)
 
 proc setUnixSeconds*(dp: DatePicker, seconds: float64) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naDatePickerSetUnixSeconds(dp.native, seconds)
 
 proc getUnixSeconds*(dp: DatePicker): float64 =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naDatePickerGetUnixSeconds(dp.native)
   else:
     0.0

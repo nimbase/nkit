@@ -1,9 +1,11 @@
-import nkit/foundation/geometry
+import ./foundation/geometry
 
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ./platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ./platform/macos/nsfunctions
+elif defined(linux):
+  import ./platform/linux/gfunctions
 
 type Image* = ref object
   handle*: int64
@@ -15,7 +17,7 @@ proc newImageEmpty(): Image =
   result = Image(handle: 0, source: "", formatValue: "Unknown")
 
 proc fromImageFile*(path: string): Image =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     let handle = naImageFromFile(path.cstring)
     if handle == 0:
       return nil
@@ -31,7 +33,7 @@ proc fromImageFile*(path: string): Image =
     return nil
 
 proc fromBase64*(data: string): Image =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     let handle = naImageFromBase64(data.cstring)
     if handle == 0:
       return nil
@@ -49,7 +51,7 @@ proc fromBase64*(data: string): Image =
     return nil
 
 proc exists*(img: Image): bool =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naImageExists(img.handle)
   else:
     false
@@ -64,23 +66,23 @@ proc getSource*(img: Image): string =
   img.source
 
 proc toBase64*(img: Image): string =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     $naImageToBase64(img.handle)
   else:
     ""
 
 proc saveToFile*(img: Image, path: string): bool =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naImageSaveToFile(img.handle, path.cstring)
   else:
     false
 
 proc free*(img: Image) =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naImageDestroy(img.handle)
 
 proc nativePtr*(img: Image): pointer =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naImageNativePtr(img.handle)
   else:
     nil

@@ -1,12 +1,14 @@
 import std/tables
-import nkit/foundation/id_allocator
-import nkit/foundation/event
-import nkit/foundation/event_emitter
-import nkit/gui/view
+import ../foundation/id_allocator
+import ../foundation/event
+import ../foundation/event_emitter
+import ./view
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ../platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ../platform/macos/nsfunctions
+elif defined(linux):
+  import ../platform/linux/gfunctions
 
 export view
 
@@ -32,14 +34,14 @@ proc newToastDismissedEvent*(toastId: uint32): ToastDismissedEvent =
   result = ToastDismissedEvent(toastId: toastId)
   discard stamp(result)
 
-when defined(macosx) or defined(ios):
+when defined(macosx) or defined(ios) or defined(linux):
   proc toastDismissTrampoline(toastId: uint32, ctx: pointer) {.cdecl.} =
     if not sharedToastInstance.isNil:
       dec sharedToastInstance.activeCount
       emitAsync(sharedToastInstance, newToastDismissedEvent(toastId))
 
 proc ensureToastCallbacks*() =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     if not toastCallbacksArmed:
       naToastSetDismissCallback(toastDismissTrampoline, nil)
       toastCallbacksArmed = true
@@ -54,7 +56,7 @@ proc sharedToastManager*(): ToastManager =
 proc show*(tm: ToastManager, title: string, message = "", durationMs = 4000.0,
            width = 300.0): uint32 =
   ## Shows a floating toast notification in the bottom-right corner of the screen.
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     let offset = float64(tm.activeCount) * 92.0
     let id = naToastShow(title.cstring, message.cstring, durationMs, offset, width)
     inc tm.activeCount
@@ -63,11 +65,11 @@ proc show*(tm: ToastManager, title: string, message = "", durationMs = 4000.0,
     result = 0
 
 proc close*(tm: ToastManager, toastId: uint32) =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     naToastClose(toastId)
 
 proc activeToasts*(tm: ToastManager): int =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     int(naToastActiveCount())
   else:
     0

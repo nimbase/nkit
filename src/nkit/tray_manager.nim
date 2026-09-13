@@ -1,6 +1,6 @@
 import std/tables
-import nkit/foundation/object_registry
-import nkit/tray_icon
+import ./foundation/object_registry
+import ./tray_icon
 
 type TrayManager* = ref object
   objects: ObjectRegistry[TrayIcon]
@@ -8,7 +8,7 @@ type TrayManager* = ref object
 var sharedTrayManagerInstance: TrayManager
 
 proc isSupported*(tm: TrayManager): bool =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     true
   else:
     false
@@ -41,7 +41,7 @@ proc sharedTrayManager*(): TrayManager =
 proc createTray*(tm: TrayManager): TrayIcon =
   result = newTrayIcon()
   tm.objects.add(result.id.uint32, result)
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     if globalTrayClickSink.isNil:
       let manager = tm
       globalTrayClickSink = proc(trayKey: uint32, kind: int) =

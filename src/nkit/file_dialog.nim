@@ -1,11 +1,13 @@
-import nkit/foundation/event
-import nkit/dialog
+import ./foundation/event
+import ./dialog
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ./platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ./platform/macos/nsfunctions
+elif defined(linux):
+  import ./platform/linux/gfunctions
 
-when defined(macosx) and not defined(ios):
+when defined(macosx) or defined(linux):
   import std/strutils
 
 type
@@ -18,7 +20,7 @@ type
     handle: pointer
 
 proc newOpenFileDialog*(title = ""): OpenFileDialog =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     let h = naOpenPanelCreate(title.cstring)
   else:
     let h: pointer = nil
@@ -29,17 +31,17 @@ proc newOpenFileDialog*(title = ""): OpenFileDialog =
 
 proc setAllowsMultiple*(d: OpenFileDialog, value: bool) =
   d.allowsMultipleValue = value
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naOpenPanelSetAllowsMultiple(d.handle, value)
 
 proc setCanChooseDirectories*(d: OpenFileDialog, value: bool) =
   d.canChooseDirectoriesValue = value
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naOpenPanelSetCanChooseDirectories(d.handle, value)
 
 proc setFilters*(d: OpenFileDialog, extensions: seq[string]) =
   d.filtersValue = extensions
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     var exts: seq[cstring] = @[]
     for e in extensions:
       exts.add(e.cstring)
@@ -50,12 +52,12 @@ proc setFilters*(d: OpenFileDialog, extensions: seq[string]) =
 
 proc setInitialDirectory*(d: OpenFileDialog, path: string) =
   d.initialDirectoryValue = path
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naOpenPanelSetInitialDirectory(d.handle, path.cstring)
 
 method open*(d: OpenFileDialog): seq[string] =
   ## Runs the panel modally and returns the chosen paths (empty on cancel).
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     var paths: ptr cstring = nil
     let count = naOpenPanelRunModal(d.handle, addr paths)
     if count > 0 and not paths.isNil:
@@ -74,7 +76,7 @@ type
     handle: pointer
 
 proc newSaveFileDialog*(title = "", defaultName = ""): SaveFileDialog =
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     let h = naSavePanelCreate(title.cstring, defaultName.cstring)
   else:
     let h: pointer = nil
@@ -86,12 +88,12 @@ proc newSaveFileDialog*(title = "", defaultName = ""): SaveFileDialog =
 
 proc setNameField*(d: SaveFileDialog, name: string) =
   d.defaultNameValue = name
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     naSavePanelSetNameField(d.handle, name.cstring)
 
 proc setFilters*(d: SaveFileDialog, extensions: seq[string]) =
   d.filtersValue = extensions
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     var exts: seq[cstring] = @[]
     for e in extensions:
       exts.add(e.cstring)
@@ -102,7 +104,7 @@ proc setFilters*(d: SaveFileDialog, extensions: seq[string]) =
 
 method open*(d: SaveFileDialog): string =
   ## Runs the panel modally; returns the chosen path or "" on cancel.
-  when defined(macosx) and not defined(ios):
+  when defined(macosx) or defined(linux):
     let path = naSavePanelRunModal(d.handle)
     if not path.isNil:
       result = $path

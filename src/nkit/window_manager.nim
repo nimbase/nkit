@@ -1,18 +1,20 @@
-import nkit/foundation/event_emitter
-import nkit/foundation/geometry
-import nkit/window
-import nkit/window_registry
+import ./foundation/event_emitter
+import ./foundation/geometry
+import ./window
+import ./window_registry
 
 when defined(ios):
-  import nkit/platform/ios/uifunctions
+  import ./platform/ios/uifunctions
 elif defined(macosx):
-  import nkit/platform/macos/nsfunctions
+  import ./platform/macos/nsfunctions
+elif defined(linux):
+  import ./platform/linux/gfunctions
 
 const maxEnumeratedWindows = 256
 
 type WindowManager* = ref object of EventEmitter[WindowEvent]
 
-when defined(macosx) or defined(ios):
+when defined(macosx) or defined(ios) or defined(linux):
   proc eventTrampoline(kind: cint, windowId: uint32, a, b: float64, ctx: pointer) {.cdecl.} =
     let wm = cast[WindowManager](ctx)
     let wid = windowId.WindowId
@@ -43,7 +45,7 @@ proc wrapNativeKey*(wm: WindowManager, key: uint32): Window =
   w
 
 proc getAllWindows*(wm: WindowManager): seq[Window] =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     var ids: array[maxEnumeratedWindows, uint32]
     let count = int(naWindowListIds(cast[ptr uint32](addr ids[0]), cint(maxEnumeratedWindows)))
     for i in 0 ..< count:
@@ -58,7 +60,7 @@ proc getWindow*(wm: WindowManager, id: WindowId): Window =
     result = reg.get(id)
 
 proc getCurrentWindow*(wm: WindowManager): Window =
-  when defined(macosx) or defined(ios):
+  when defined(macosx) or defined(ios) or defined(linux):
     let key = naWindowMainWindowId()
     if key != 0:
       result = wm.wrapNativeKey(key)
@@ -67,7 +69,7 @@ proc sharedWindowManager*(): WindowManager =
   if sharedWindowManagerInstance.isNil:
     let wm = WindowManager()
     initEmitter(wm)
-    when defined(macosx) or defined(ios):
+    when defined(macosx) or defined(ios) or defined(linux):
       naWindowSetEventCallback(eventTrampoline, cast[pointer](wm))
     if onWindowCreated.isNil:
       onWindowCreated = proc(w: Window) =
