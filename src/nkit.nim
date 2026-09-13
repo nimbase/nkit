@@ -101,6 +101,7 @@ else:
   import nkit/gui/imageview
   import nkit/gui/stack
   import nkit/gui/scroll
+  import nkit/gui/webview
   import nkit/gui/card
   import nkit/gui/badge
   import nkit/gui/tabs
@@ -136,7 +137,7 @@ else:
   export button, label, separator
   export input, textarea, switch_widget, slider
   export progress, segmented, select, datepicker, imageview
-  export stack, scroll, card, badge, tabs, avatar
+  export stack, scroll, webview, card, badge, tabs, avatar
   export accordion
   export hover_router
   export sidebar, sugar, toast

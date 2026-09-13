@@ -25,6 +25,7 @@ import nkit/gui/avatar
 import nkit/gui/separator
 import nkit/gui/datepicker
 import nkit/gui/scroll
+import nkit/gui/webview
 import nkit/gui/card
 import nkit/gui/tabs
 import nkit/gui/sidebar
@@ -36,8 +37,8 @@ import nkit/gui/router
 export layout, theme, label, button, input, textarea, switch_widget, slider,
        progress, segmented, select, imageview, badge, avatar, separator,
        alert, popover, split_view, toolbar, animate,
-       datepicker, scroll, card, tabs, sidebar, toast, accordion, stack,
-       router
+        datepicker, scroll, card, tabs, sidebar, toast, accordion, stack,
+        router, webview
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -270,6 +271,31 @@ proc datePicker*(style: DatePickerStyle, unixSeconds = 0.0): ViewNode =
   toNode(dp)
 
 # ---------------------------------------------------------------------------
+# Web view
+# ---------------------------------------------------------------------------
+
+proc webview*(url = "", html = "", javaScriptEnabled = true): ViewNode =
+  ## An embedded browser. `url` wins when both `url` and `html` are set.
+  ## Has no intrinsic size: place it in `expanded()` or `sizedBox()`.
+  let wv = newWebView(javaScriptEnabled)
+  if url.len > 0:
+    loadUrl(wv, url)
+  elif html.len > 0:
+    loadHtml(wv, html)
+  toNode(wv)
+
+proc webviewWithHandler*(url: string, messageHandler: string,
+                         javaScriptEnabled = true): ViewNode =
+  ## A web view with a JS message handler pre-registered, so
+  ## `window.webkit.messageHandlers.<messageHandler>.postMessage(...)`
+  ## reaches Nim as a `WebViewMessageEvent`.
+  let wv = newWebView(javaScriptEnabled)
+  addMessageHandler(wv, messageHandler)
+  if url.len > 0:
+    loadUrl(wv, url)
+  toNode(wv)
+
+# ---------------------------------------------------------------------------
 # Scroll
 # ---------------------------------------------------------------------------
 
@@ -497,6 +523,42 @@ proc onChanged*(n: ViewNode,
   ## Wires an expand/collapse handler on an Accordion node.
   doAssert n.view of Accordion, "onChanged target is not an accordion"
   onChanged(Accordion(n.view), handler)
+
+proc onLoadStarted*(n: ViewNode,
+                    handler: proc(e: WebViewStartedEvent)): ListenerId =
+  ## Wires a load-started handler on a WebView node.
+  doAssert n.view of WebView, "onLoadStarted target is not a webview"
+  onLoadStarted(WebView(n.view), handler)
+
+proc onLoadFinished*(n: ViewNode,
+                     handler: proc(e: WebViewFinishedEvent)): ListenerId =
+  ## Wires a load-finished handler on a WebView node.
+  doAssert n.view of WebView, "onLoadFinished target is not a webview"
+  onLoadFinished(WebView(n.view), handler)
+
+proc onLoadFailed*(n: ViewNode,
+                   handler: proc(e: WebViewFailedEvent)): ListenerId =
+  ## Wires a load-failed handler on a WebView node.
+  doAssert n.view of WebView, "onLoadFailed target is not a webview"
+  onLoadFailed(WebView(n.view), handler)
+
+proc onProgress*(n: ViewNode,
+                 handler: proc(e: WebViewProgressEvent)): ListenerId =
+  ## Wires a progress handler on a WebView node.
+  doAssert n.view of WebView, "onProgress target is not a webview"
+  onProgress(WebView(n.view), handler)
+
+proc onMessage*(n: ViewNode,
+                handler: proc(e: WebViewMessageEvent)): ListenerId =
+  ## Wires a JS-message handler on a WebView node.
+  doAssert n.view of WebView, "onMessage target is not a webview"
+  onMessage(WebView(n.view), handler)
+
+proc onJsResult*(n: ViewNode,
+                 handler: proc(e: WebViewJsResultEvent)): ListenerId =
+  ## Wires a JS-evaluation-result handler on a WebView node.
+  doAssert n.view of WebView, "onJsResult target is not a webview"
+  onJsResult(WebView(n.view), handler)
 
 # ---------------------------------------------------------------------------
 # Text helpers routed by runtime widget kind

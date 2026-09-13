@@ -15,6 +15,7 @@
 {.compile: "widgets/segmented.m".}
 {.compile: "widgets/stack.m".}
 {.compile: "widgets/scroll.m".}
+{.compile: "widgets/webview.m".}
 {.compile: "widgets/input.m".}
 {.compile: "widgets/textarea.m".}
 {.compile: "widgets/imageview.m".}
@@ -31,6 +32,7 @@
 {.passl: "-framework Foundation".}
 {.passl: "-framework CoreGraphics".}
 {.passl: "-framework QuartzCore".}
+{.passl: "-framework WebKit".}
 
 ## UIKit shim declarations for iOS. Proc names and signatures mirror
 ## nkit/platform/macos/nsfunctions.nim so service modules stay
@@ -519,6 +521,49 @@ proc naScrollSetBorder*(scrollPtr: pointer; bordered: bool) {.
   importc: "na_scroll_set_border".}
 proc naScrollSetBackground*(scrollPtr: pointer; r, g, b, a: uint8) {.
   importc: "na_scroll_set_background".}
+
+# --- webview (WKWebView) ----------------------------------------------------
+# Event kinds mirror gui/webview.nim:
+# 0 started, 1 finished, 2 failed, 3 progress, 4 message, 5 jsResult.
+
+type
+  NaWebViewEventFn* = proc (widgetId: uint32; kind: cint; arg1, arg2: cstring;
+                            num: float64; num2: uint64; ctx: pointer) {.cdecl.}
+
+proc naWebviewSetEventCallback*(fn: NaWebViewEventFn; ctx: pointer) {.
+  importc: "na_webview_set_event_callback".}
+proc naWebviewCreate*(widgetId: uint32; javaScriptEnabled: bool): pointer {.
+  importc: "na_webview_create".}
+proc naWebviewFree*(widgetId: uint32; viewPtr: pointer) {.
+  importc: "na_webview_free".}
+proc naWebviewLoadUrl*(viewPtr: pointer; url: cstring) {.
+  importc: "na_webview_load_url".}
+proc naWebviewLoadHtml*(viewPtr: pointer; html, baseUrl: cstring) {.
+  importc: "na_webview_load_html".}
+proc naWebviewReload*(viewPtr: pointer) {.importc: "na_webview_reload".}
+proc naWebviewStop*(viewPtr: pointer) {.importc: "na_webview_stop".}
+proc naWebviewGoBack*(viewPtr: pointer) {.importc: "na_webview_go_back".}
+proc naWebviewGoForward*(viewPtr: pointer) {.importc: "na_webview_go_forward".}
+proc naWebviewCanGoBack*(viewPtr: pointer): bool {.
+  importc: "na_webview_can_go_back".}
+proc naWebviewCanGoForward*(viewPtr: pointer): bool {.
+  importc: "na_webview_can_go_forward".}
+proc naWebviewGetUrl*(viewPtr: pointer): cstring {.
+  importc: "na_webview_get_url".}
+proc naWebviewGetTitle*(viewPtr: pointer): cstring {.
+  importc: "na_webview_get_title".}
+proc naWebviewGetProgress*(viewPtr: pointer): float64 {.
+  importc: "na_webview_get_progress".}
+proc naWebviewIsLoading*(viewPtr: pointer): bool {.
+  importc: "na_webview_is_loading".}
+proc naWebviewEvaluateJs*(viewPtr: pointer; script: cstring;
+                           requestId: uint64) {.
+  importc: "na_webview_evaluate_js".}
+proc naWebviewAddMessageHandler*(viewPtr: pointer; name: cstring) {.
+  importc: "na_webview_add_message_handler".}
+proc naWebviewFire*(widgetId: uint32; kind: cint; arg1, arg2: cstring;
+                    num: float64; num2: uint64) {.
+  importc: "na_webview_fire".}
 
 # --- input ------------------------------------------------------------------
 
