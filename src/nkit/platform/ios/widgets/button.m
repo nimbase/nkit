@@ -98,6 +98,50 @@ bool na_button_is_enabled(void* view_ptr) {
   return button ? button.enabled != NO : false;
 }
 
+void na_button_set_symbol(void* view_ptr, const char* symbol_name) {
+  UIButton* button = (__bridge UIButton*)view_ptr;
+  if (!button) return;
+  if (!symbol_name || symbol_name[0] == '\0') {
+    [button setImage:nil forState:UIControlStateNormal];
+    return;
+  }
+  NSString* name = [NSString stringWithUTF8String:symbol_name];
+  UIImage* image = nil;
+  if (@available(iOS 13.0, *)) {
+    image = [UIImage systemImageNamed:name];
+  }
+  [button setImage:image forState:UIControlStateNormal];
+}
+
+void na_button_set_bordered(void* view_ptr, bool bordered) {
+  UIButton* button = (__bridge UIButton*)view_ptr;
+  if (!button) return;
+  objc_setAssociatedObject(button, "na_button_bordered", @(bordered ? 1 : 0),
+                           OBJC_ASSOCIATION_RETAIN);
+  if (@available(iOS 15.0, *)) {
+    UIButtonConfiguration* config = button.configuration;
+    if (!config) {
+      config = [UIButtonConfiguration plainButtonConfiguration];
+    }
+    if (!bordered) {
+      config.background.strokeColor = nil;
+      config.background.strokeWidth = 0;
+      config.background.backgroundColor = [UIColor clearColor];
+    }
+    button.configuration = config;
+  } else if (!bordered) {
+    button.backgroundColor = [UIColor clearColor];
+    button.layer.borderWidth = 0;
+  }
+}
+
+bool na_button_is_bordered(void* view_ptr) {
+  UIButton* button = (__bridge UIButton*)view_ptr;
+  if (!button) return false;
+  NSNumber* stored = objc_getAssociatedObject(button, "na_button_bordered");
+  return stored ? stored.boolValue : true;
+}
+
 void na_button_set_event_callback(na_button_event_fn fn, void* ctx) {
   g_button_event_fn = fn;
   g_button_event_ctx = ctx;

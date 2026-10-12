@@ -1,6 +1,7 @@
 import std/math
 import ./layout_core
 import ./view
+import ./scroll
 import ../foundation/event
 import ../foundation/event_emitter
 import ../foundation/id_allocator
@@ -140,7 +141,10 @@ proc attachViews*(n: LayoutNode) =
   for c in n.children:
     let cv = viewOf(c)
     if not pv.isNil and not cv.isNil:
-      addSubview(pv, cv)
+      # A scroll view's document is parented natively via setDocument;
+      # re-adding it as a plain subview would break scrolling.
+      if not (pv of Scroll):
+        addSubview(pv, cv)
     attachViews(c)
 
 proc applyLayout*(root: LayoutNode, available: Size) =

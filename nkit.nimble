@@ -13,5 +13,5 @@ binDir        = "bin"
 # Dependencies
 
 requires "nim >= 2.2.10"
-requires "kapsis >= 0.4.7"
+requires "kapsis >= 0.5.0"
 requires "openparser >= 0.2.0"

@@ -72,6 +72,54 @@ bool na_button_is_enabled(void *v) {
   if (!v) return false;
   return gtk_widget_get_sensitive((GtkWidget *)v) ? true : false;
 }
+void na_button_set_symbol(void *v, const char *name) {
+  if (!v) return;
+  GtkButton *b = GTK_BUTTON(v);
+#if NA_GTK4
+  if (name && name[0]) {
+    g_object_set(b, "icon-name", name, NULL);
+  } else {
+    g_object_set(b, "icon-name", "", NULL);
+  }
+#else
+  GtkWidget *img = gtk_button_get_image(b);
+  if (name && name[0]) {
+    GtkWidget *ni = gtk_image_new_from_icon_name(name, GTK_ICON_SIZE_BUTTON);
+#if !NA_GTK4
+    gtk_widget_show(ni);
+#endif
+    gtk_button_set_image(b, ni);
+  } else if (img) {
+    gtk_button_set_image(b, NULL);
+  }
+#endif
+}
+void na_button_set_bordered(void *v, bool bordered) {
+  if (!v) return;
+#if NA_GTK4
+  if (bordered) {
+    gtk_widget_remove_css_class((GtkWidget *)v, "flat");
+  } else {
+    gtk_widget_add_css_class((GtkWidget *)v, "flat");
+  }
+#else
+  GtkStyleContext *sc = gtk_widget_get_style_context((GtkWidget *)v);
+  if (bordered) {
+    gtk_style_context_remove_class(sc, "flat");
+  } else {
+    gtk_style_context_add_class(sc, "flat");
+  }
+#endif
+}
+bool na_button_is_bordered(void *v) {
+  if (!v) return false;
+#if NA_GTK4
+  return !gtk_widget_has_css_class((GtkWidget *)v, "flat");
+#else
+  GtkStyleContext *sc = gtk_widget_get_style_context((GtkWidget *)v);
+  return !gtk_style_context_has_class(sc, "flat");
+#endif
+}
 void na_button_fire(uint32_t widget_id) {
   if (g_button_fn) g_button_fn(widget_id, g_button_ctx);
 }
@@ -1066,4 +1114,126 @@ int na_toolbar_item_count(int64_t h) {
 }
 static void toolbar_fire(unsigned int wid){
   if (g_tb_fn) g_tb_fn(wid, g_tb_ctx);
+}
+// Extended toolbar API: GtkHeaderBar stub keeps counts, tooltips and
+// enabled flags so shared Nim code compiles and behaves sanely.
+static GHashTable *g_tb_tips = NULL; // wid -> char*
+static GHashTable *g_tb_enabled = NULL; // wid -> gboolean
+static GHashTable *g_tb_search = NULL; // wid -> char* (search text)
+static void ensure_tb_extra(void){
+  if(!g_tb_tips) g_tb_tips = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, g_free);
+  if(!g_tb_enabled) g_tb_enabled = g_hash_table_new(g_direct_hash, g_direct_equal);
+  if(!g_tb_search) g_tb_search = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, g_free);
+}
+typedef void (*na_toolbar_search_fn)(unsigned int id, bool submitted, const char *text);
+static na_toolbar_search_fn g_tb_search_fn = NULL;
+int na_toolbar_add_space(int64_t h, bool flexible, unsigned int wid) {
+  (void)flexible;
+  ensure_toolbars();
+  GPtrArray *a = (GPtrArray*)g_hash_table_lookup(g_toolbars, GSIZE_TO_POINTER((gsize)h));
+  if (!a) { a=g_ptr_array_new(); g_hash_table_insert(g_toolbars, GSIZE_TO_POINTER((gsize)h), a); }
+  g_ptr_array_add(a, GUINT_TO_POINTER(wid));
+  return (int)a->len -1;
+}
+int na_toolbar_add_search(int64_t h, const char *placeholder, unsigned int wid) {
+  (void)placeholder;
+  ensure_toolbars(); ensure_tb_extra();
+  GPtrArray *a = (GPtrArray*)g_hash_table_lookup(g_toolbars, GSIZE_TO_POINTER((gsize)h));
+  if (!a) { a=g_ptr_array_new(); g_hash_table_insert(g_toolbars, GSIZE_TO_POINTER((gsize)h), a); }
+  g_ptr_array_add(a, GUINT_TO_POINTER(wid));
+  g_hash_table_insert(g_tb_search, GUINT_TO_POINTER(wid), g_strdup(""));
+  return (int)a->len -1;
+}
+void na_toolbar_set_item_tooltip(int64_t h, unsigned int wid, const char *tip) {
+  (void)h; ensure_tb_extra();
+  gpointer k = GUINT_TO_POINTER(wid);
+  g_hash_table_remove(g_tb_tips, k);
+  if (tip && tip[0]) g_hash_table_insert(g_tb_tips, k, g_strdup(tip));
+}
+void na_toolbar_set_item_enabled(int64_t h, unsigned int wid, bool e) {
+  (void)h; ensure_tb_extra();
+  g_hash_table_insert(g_tb_enabled, GUINT_TO_POINTER(wid), GINT_TO_POINTER(e ? 1 : 0));
+}
+bool na_toolbar_is_item_enabled(int64_t h, unsigned int wid) {
+  (void)h; ensure_tb_extra();
+  gpointer v = g_hash_table_lookup(g_tb_enabled, GUINT_TO_POINTER(wid));
+  return v ? (GPOINTER_TO_INT(v) ? true : false) : true;
+}
+void na_toolbar_set_display_mode(int64_t h, int m) { (void)h; (void)m; }
+void na_toolbar_set_size_mode(int64_t h, bool s) { (void)h; (void)s; }
+void na_toolbar_set_allows_customization(int64_t h, bool a) { (void)h; (void)a; }
+void na_toolbar_set_shows_baseline_separator(int64_t h, bool s) { (void)h; (void)s; }
+void na_toolbar_set_selected_item(int64_t h, unsigned int wid) { (void)h; (void)wid; }
+const char *na_toolbar_get_search_text(int64_t h, unsigned int wid) {
+  (void)h; ensure_tb_extra();
+  const char *s = (const char*)g_hash_table_lookup(g_tb_search, GUINT_TO_POINTER(wid));
+  return s ? s : "";
+}
+void na_toolbar_set_search_callback(na_toolbar_search_fn fn) { g_tb_search_fn = fn; }
+void na_toolbar_fire_search(unsigned int wid, bool submitted, const char *text) {
+  if (g_tb_search_fn) g_tb_search_fn(wid, submitted, text ? text : "");
+}
+
+// ================= color well (GtkColorButton) =================
+typedef void (*na_colorwell_event_fn)(uint32_t widget_id, void *ctx);
+static na_colorwell_event_fn g_colorwell_fn = NULL;
+static void *g_colorwell_ctx = NULL;
+
+void na_colorwell_set_event_callback(na_colorwell_event_fn fn, void *ctx) {
+  g_colorwell_fn = fn;
+  g_colorwell_ctx = ctx;
+}
+
+static void colorwell_color_set_cb(GtkColorButton *b, gpointer ud) {
+  (void)ud;
+  if (!g_colorwell_fn) return;
+  uint32_t id = GPOINTER_TO_UINT(g_object_get_data(G_OBJECT(b), "nkit-id"));
+  g_colorwell_fn(id, g_colorwell_ctx);
+}
+
+void *na_colorwell_create(uint32_t widget_id) {
+  na_linux_ensure_gtk();
+  GtkWidget *b = gtk_color_button_new();
+  GdkRGBA init = {0.0, 0.478, 1.0, 1.0};
+  gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(b), &init);
+  g_object_set_data(G_OBJECT(b), "nkit-id", GUINT_TO_POINTER(widget_id));
+  g_signal_connect(b, "color-set", G_CALLBACK(colorwell_color_set_cb), NULL);
+#if !NA_GTK4
+  gtk_widget_show(b);
+#endif
+  g_object_ref_sink(b);
+  return (void *)b;
+}
+void na_colorwell_free(uint32_t widget_id, void *view_ptr) {
+  (void)widget_id;
+  GtkWidget *w = (GtkWidget *)view_ptr;
+  if (!w) return;
+  GtkWidget *p = gtk_widget_get_parent(w);
+  if (p) na_compat_container_remove(p, w);
+  g_object_unref(w);
+}
+void na_colorwell_set_color(void *v, unsigned char r, unsigned char g,
+                            unsigned char b, unsigned char a) {
+  if (!v) return;
+  GdkRGBA c = {r / 255.0, g / 255.0, b / 255.0, a / 255.0};
+  gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(v), &c);
+}
+void na_colorwell_get_color(void *v, unsigned char *outR, unsigned char *outG,
+                            unsigned char *outB, unsigned char *outA) {
+  GdkRGBA c = {0.0, 0.478, 1.0, 1.0};
+  if (v) gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(v), &c);
+  if (outR) *outR = (unsigned char)(c.red * 255.0);
+  if (outG) *outG = (unsigned char)(c.green * 255.0);
+  if (outB) *outB = (unsigned char)(c.blue * 255.0);
+  if (outA) *outA = (unsigned char)(c.alpha * 255.0);
+}
+void na_colorwell_set_enabled(void *v, bool e) {
+  if (v) gtk_widget_set_sensitive((GtkWidget *)v, e ? TRUE : FALSE);
+}
+bool na_colorwell_is_enabled(void *v) {
+  if (!v) return false;
+  return gtk_widget_get_sensitive((GtkWidget *)v) ? true : false;
+}
+void na_colorwell_fire(uint32_t widget_id) {
+  if (g_colorwell_fn) g_colorwell_fn(widget_id, g_colorwell_ctx);
 }

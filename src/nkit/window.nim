@@ -433,3 +433,24 @@ proc contentView*(w: Window): pointer =
   ## Raw platform content view pointer (NSView* on macOS).
   when defined(macosx) or defined(ios) or defined(linux):
     naWindowContentView(w.nativeKey)
+
+when defined(macosx):
+  import ./menu
+
+  proc setContextMenu*(w: Window, m: Menu) =
+    ## Attaches a right-click menu to the window's content view.
+    ## Right-clicks anywhere without a more specific view menu show this.
+    let key = if m.isNil: 0'u32 else: m.nativeKey
+    naViewSetContextMenu(naWindowContentView(w.nativeKey), key)
+
+  proc getContextMenu*(w: Window): Menu =
+    findMenuByKey(naViewGetContextMenu(naWindowContentView(w.nativeKey)))
+
+  proc clearContextMenu*(w: Window) =
+    naViewSetContextMenu(naWindowContentView(w.nativeKey), 0)
+
+  proc hasContextMenu*(w: Window): bool =
+    naViewGetContextMenu(naWindowContentView(w.nativeKey)) != 0
+
+  proc openContextMenu*(w: Window): bool =
+    naViewOpenContextMenu(naWindowContentView(w.nativeKey))

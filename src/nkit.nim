@@ -42,6 +42,21 @@ when isMainModule:
       logs any(platform = ["ios", "macos"]), ?string("--udid"):
         ## Stream simulator logs for the app process
 
+      -- "Distribution"
+      bundle ?filepath(app), ?list("-f"), ?list("--file"), ?list("-d"),
+             ?list("--dir"), ?string("-o"), ?string("--out"),
+             ?string("--volname"),
+             ?any("--format" = ["ULFO", "UDZO", "UDBZ"]),
+             ?any("--fs" = ["HFS+", "APFS"]), ?bool("--no-applications"):
+        ## Package a macOS .app into a .dmg (macOS only)
+        ##
+        ## Takes the app bundle to package: nkit bundle path/to/App.app.
+        ## Needs no nkit.yaml, and with no argument takes the single .app
+        ## under build/macos. Repeat -f and -d to add several files or
+        ## directories to the volume root, alongside the app and the
+        ## Applications shortcut. -f .VolumeIcon.icns sets a custom volume
+        ## icon.
+
       clean:
         ## Remove the build directory
 
@@ -85,6 +100,11 @@ else:
   import nkit/notifications
   import nkit/shortcut
   import nkit/shortcut_manager
+  when defined(macosx):
+    import nkit/dock
+    import nkit/menubar
+    import nkit/gui/table
+    import nkit/gui/outline
   import nkit/gui/view
   import nkit/gui/theme
   import nkit/gui/button
@@ -98,6 +118,7 @@ else:
   import nkit/gui/segmented
   import nkit/gui/select
   import nkit/gui/datepicker
+  import nkit/gui/colorwell
   import nkit/gui/imageview
   import nkit/gui/stack
   import nkit/gui/scroll
@@ -133,10 +154,16 @@ else:
   export image, keyboard_monitor, mouse_monitor
   export clipboard, file_dialog, drag_drop, notifications, alert
   export shortcut, shortcut_manager
+  when defined(macosx):
+    export dock
+    export menubar
+    export table
+    export outline
   export view, theme
   export button, label, separator
   export input, textarea, switch_widget, slider
   export progress, segmented, select, datepicker, imageview
+  export colorwell
   export stack, scroll, webview, card, badge, tabs, avatar
   export accordion
   export hover_router

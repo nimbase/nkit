@@ -106,6 +106,8 @@ type
     tooltipSet*: bool
     acceleratorValue*: KeyboardAccelerator
     hasAccelerator*: bool
+    selectorValue*: string
+    hasSelector*: bool
     stateValue*: MenuItemState
     radioGroupValue*: int
     submenuValue*: Menu
@@ -291,6 +293,11 @@ proc newMenu*(): Menu =
 
 proc getId*(m: Menu): MenuId =
   m.nativeKey.MenuId
+
+proc findMenuByKey*(key: uint32): Menu =
+  ## Looks up a live Menu by its native key. Returns nil when absent.
+  ## Used by view/window/dock context-menu bindings.
+  liveMenus.getOrDefault(key)
 
 proc addItem*(m: Menu, item: MenuItem) =
   m.items.add(item)

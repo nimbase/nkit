@@ -212,6 +212,11 @@ proc newMargin*(child: LayoutNode, left: float64, top: float64, right: float64,
 proc measure*(n: LayoutNode, maxWidth: float64, maxHeight: float64): Size =
   case n.kind
   of likLeaf:
+    # A leaf with children is a scroll view: the document child measures
+    # against the viewport width with unbounded height so the solver
+    # learns the full content size.
+    if n.children.len > 0:
+      discard measure(n.children[0], maxWidth, Inf)
     n.cached = n.measureSelf(maxWidth, maxHeight)
     result = n.cached
   of likExpanded:
@@ -331,7 +336,13 @@ proc place*(n: LayoutNode, rect: Rectangle, parentSize: Size)
 proc placeChildren*(n: LayoutNode, rect: Rectangle, parentSize: Size) =
   case n.kind
   of likLeaf:
-    discard
+    # Scroll-view leaf: lay the document out at viewport width and full
+    # content height inside the document view.
+    if n.children.len > 0:
+      let c = n.children[0]
+      place(c, rectangle(0.0, 0.0, max(rect.width, c.cached.width),
+                         max(rect.height, c.cached.height)),
+            size(rect.width, rect.height))
   of likExpanded:
     if n.children.len > 0:
       place(n.children[0], rectangle(0.0, 0.0, rect.width, rect.height), rect.size())

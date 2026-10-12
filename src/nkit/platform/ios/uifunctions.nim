@@ -25,6 +25,7 @@
 {.compile: "widgets/toast.m".}
 {.compile: "widgets/accordion.m".}
 {.compile: "widgets/hover_router.m".}
+{.compile: "widgets/colorwell.m".}
 {.compile: "widgets/split_view.m".}
 {.compile: "widgets/dispatcher.m".}
 {.passc: "-fobjc-arc".}
@@ -398,6 +399,12 @@ proc naButtonSetEnabled*(viewPtr: pointer, enabled: bool) {.
   importc: "na_button_set_enabled".}
 proc naButtonIsEnabled*(viewPtr: pointer): bool {.
   importc: "na_button_is_enabled".}
+proc naButtonSetSymbol*(viewPtr: pointer; symbolName: cstring) {.
+  importc: "na_button_set_symbol".}
+proc naButtonSetBordered*(viewPtr: pointer; bordered: bool) {.
+  importc: "na_button_set_bordered".}
+proc naButtonIsBordered*(viewPtr: pointer): bool {.
+  importc: "na_button_is_bordered".}
 proc naButtonFire*(widgetId: uint32) {.importc: "na_button_fire".}
 
 # --- separators ------------------------------------------------------------
@@ -407,6 +414,27 @@ proc naSeparatorCreate*(orientation: cint): pointer {.
 proc naSeparatorFree*(viewPtr: pointer) {.importc: "na_separator_free".}
 proc naSeparatorSetThickness*(viewPtr: pointer, t: float64) {.
   importc: "na_separator_set_thickness".}
+
+# --- color well (UIColorWell, iOS 14+) ---------------------------------------
+
+type
+  NaColorwellEventFn* = proc (widgetId: uint32; ctx: pointer) {.cdecl.}
+
+proc naColorwellSetEventCallback*(fn: NaColorwellEventFn; ctx: pointer) {.
+  importc: "na_colorwell_set_event_callback".}
+proc naColorwellCreate*(widgetId: uint32): pointer {.
+  importc: "na_colorwell_create".}
+proc naColorwellFree*(widgetId: uint32; viewPtr: pointer) {.
+  importc: "na_colorwell_free".}
+proc naColorwellSetColor*(viewPtr: pointer; r, g, b, a: uint8) {.
+  importc: "na_colorwell_set_color".}
+proc naColorwellGetColor*(viewPtr: pointer; outR, outG, outB, outA: ptr uint8) {.
+  importc: "na_colorwell_get_color".}
+proc naColorwellSetEnabled*(viewPtr: pointer; enabled: bool) {.
+  importc: "na_colorwell_set_enabled".}
+proc naColorwellIsEnabled*(viewPtr: pointer): bool {.
+  importc: "na_colorwell_is_enabled".}
+proc naColorwellFire*(widgetId: uint32) {.importc: "na_colorwell_fire".}
 
 # --- progress ---------------------------------------------------------------
 

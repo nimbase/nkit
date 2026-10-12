@@ -116,6 +116,8 @@ uint32_t na_menu_create(void) {
 
 void na_menu_free(uint32_t id) {
   ensure_menu_tables();
+  extern void na_view_detach_menu(uint32_t menu_id);
+  na_view_detach_menu(id);
   NSMenu* menu = g_menus[@(id)];
   if (menu) {
     menu.delegate = nil;
@@ -450,4 +452,89 @@ void na_menu_set_event_callback(na_menu_event_fn fn, void* ctx) {
   ensure_menu_tables();
   g_menu_event_fn = fn;
   g_menu_event_ctx = ctx;
+}
+
+// --- Main menu bar -------------------------------------------------------
+
+void na_app_set_main_menu(uint32_t menu_id) {
+  ensure_menu_tables();
+  NSMenu* menu = (menu_id == 0) ? nil : g_menus[@(menu_id)];
+  [NSApp setMainMenu:menu];
+}
+
+uint32_t na_app_get_main_menu(void) {
+  ensure_menu_tables();
+  NSMenu* current = [NSApp mainMenu];
+  if (!current) {
+    return 0;
+  }
+  for (NSNumber* key in g_menus) {
+    if (g_menus[key] == current) {
+      return key.unsignedIntValue;
+    }
+  }
+  return 0;
+}
+
+// Standard responder-chain selectors. Items carrying one of these run
+// natively (target nil) instead of reporting clicks to Nim.
+static NSSet<NSString*>* standard_selector_set(void) {
+  static NSSet<NSString*>* allowed = nil;
+  static dispatch_once_t once;
+  dispatch_once(&once, ^{
+    allowed = [NSSet setWithArray:@[
+      @"orderFrontStandardAboutPanel:",
+      @"hide:", @"hideOtherApplications:", @"unhideAllApplications:",
+      @"terminate:",
+      @"undo:", @"redo:", @"cut:", @"copy:", @"paste:", @"delete:",
+      @"selectAll:",
+      @"close:", @"performMiniaturize:", @"performZoom:",
+      @"toggleFullScreen:", @"arrangeInFront:",
+      @"runPageLayout:", @"print:",
+      @"showHelp:",
+      @"toggleSidebar:", @"toggleToolbarShown:",
+    ]];
+  });
+  return allowed;
+}
+
+bool na_menu_item_set_selector(uint32_t id, const char* selector_name) {
+  ensure_menu_tables();
+  NSMenuItem* item = g_items[@(id)];
+  if (!item || !selector_name || selector_name[0] == '\0') {
+    return false;
+  }
+  NSString* name = [NSString stringWithUTF8String:selector_name];
+  if (![standard_selector_set() containsObject:name]) {
+    return false;
+  }
+  // Detach the Nim click target so AppKit walks the responder chain.
+  item.target = nil;
+  item.action = NSSelectorFromString(name);
+  return true;
+}
+
+// Designations that make Services / window-list / Help search functional.
+void na_menu_set_as_services(uint32_t menu_id) {
+  ensure_menu_tables();
+  NSMenu* menu = g_menus[@(menu_id)];
+  if (menu) {
+    [NSApp setServicesMenu:menu];
+  }
+}
+
+void na_menu_set_as_windows(uint32_t menu_id) {
+  ensure_menu_tables();
+  NSMenu* menu = g_menus[@(menu_id)];
+  if (menu) {
+    [NSApp setWindowsMenu:menu];
+  }
+}
+
+void na_menu_set_as_help(uint32_t menu_id) {
+  ensure_menu_tables();
+  NSMenu* menu = g_menus[@(menu_id)];
+  if (menu) {
+    [NSApp setHelpMenu:menu];
+  }
 }

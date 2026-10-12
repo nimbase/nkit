@@ -3,8 +3,10 @@
 ## Constructor-first: common properties are optional params, not chainable
 ## setters.
 import nkit/foundation/event_emitter
+import std/math
 import nkit/gui/layout
 import nkit/gui/theme
+import nkit/menu
 import nkit/alert
 import nkit/gui/popover
 import nkit/gui/split_view
@@ -24,6 +26,7 @@ import nkit/gui/badge
 import nkit/gui/avatar
 import nkit/gui/separator
 import nkit/gui/datepicker
+import nkit/gui/colorwell
 import nkit/gui/scroll
 import nkit/gui/webview
 import nkit/gui/card
@@ -33,11 +36,16 @@ import nkit/gui/toast
 import nkit/gui/accordion
 import nkit/gui/stack
 import nkit/gui/router
+when defined(macosx):
+  import nkit/menubar
+  import nkit/application
+  import nkit/gui/table
+  import nkit/gui/outline
 
 export layout, theme, label, button, input, textarea, switch_widget, slider,
        progress, segmented, select, imageview, badge, avatar, separator,
        alert, popover, split_view, toolbar, animate,
-        datepicker, scroll, card, tabs, sidebar, toast, accordion, stack,
+        datepicker, colorwell, scroll, card, tabs, sidebar, toast, accordion, stack,
         router, webview
 
 # ---------------------------------------------------------------------------
@@ -160,6 +168,16 @@ proc radio*(title: string, isOn: bool, isEnabled: bool): ViewNode =
   setEnabled(b, isEnabled)
   toNode(b)
 
+proc iconButton*(symbolName: string,
+                 onTap: proc(e: ButtonClickEvent) = nil): ViewNode =
+  ## A borderless icon-only button (refresh/trash style rows).
+  let b = newButton("", bsPush)
+  b.setSymbol(symbolName)
+  b.setBordered(false)
+  result = toNode(b)
+  if not onTap.isNil:
+    onClick(Button(result.view), onTap)
+
 # ---------------------------------------------------------------------------
 # Text input constructors
 # ---------------------------------------------------------------------------
@@ -210,6 +228,16 @@ proc spinner*(): ViewNode =
   ## An indeterminate spinning progress indicator.
   toNode(newProgress(psSpinner))
 
+proc colorwell*(initial = color(0, 122, 255)): ViewNode =
+  ## A native color picker swatch.
+  toNode(newColorWell(initial))
+
+proc onColorChanged*(n: ViewNode,
+    handler: proc(e: ColorChangedEvent)): ListenerId =
+  ## Wires a color-change handler on a ColorWell node.
+  doAssert n.view of ColorWell, "onColorChanged target is not a colorwell"
+  onColorChanged(ColorWell(n.view), handler)
+
 # ---------------------------------------------------------------------------
 # Selection controls
 # ---------------------------------------------------------------------------
@@ -223,6 +251,28 @@ proc segmented*(labels: openArray[string], selected = 0): ViewNode =
 proc pick*(items: openArray[string]): ViewNode =
   ## A dropdown (NSPopUpButton) populated with `items`.
   toNode(newSelect(items))
+
+when defined(macosx):
+  proc table*(columns: openArray[string],
+              rows: openArray[seq[string]] = [],
+              allowMultiple = false): ViewNode =
+    ## A sortable multi-column table. Column widths default to 120pt;
+    ## adjust with `setColumnWidth` on the `TableView`.
+    let t = newTableView(allowMultiple)
+    for c in columns:
+      discard t.addColumn(c)
+    if rows.len > 0:
+      t.setRows(@rows)
+    toNode(t)
+
+  proc outline*(columns: openArray[string],
+                allowMultiple = false): ViewNode =
+    ## A disclosure tree. Populate with `setNodes` + `setRowTexts` on
+    ## the `OutlineView`; the first column carries the triangles.
+    let o = newOutlineView(allowMultiple)
+    for c in columns:
+      discard o.addColumn(c)
+    toNode(o)
 
 # ---------------------------------------------------------------------------
 # Decoration
@@ -300,11 +350,13 @@ proc webviewWithHandler*(url: string, messageHandler: string,
 # ---------------------------------------------------------------------------
 
 proc scroll*(child: ViewNode): ViewNode =
-  ## Wraps `child` in a vertical scroll view.
+  ## Wraps `child` in a vertical scroll view. The child stays linked so
+  ## the solver measures and places it inside the document view.
   let sc = newScroll()
   setDocument(sc, child.view)
   fitWidth(sc)
-  toNode(sc)
+  result = toNode(sc)
+  result.children.add(child)
 
 proc scroll*(child: ViewNode, vertical: bool,
              horizontal: bool): ViewNode =
@@ -315,7 +367,8 @@ proc scroll*(child: ViewNode, vertical: bool,
   setHasHorizontalBar(sc, horizontal)
   if vertical and not horizontal:
     fitWidth(sc)
-  toNode(sc)
+  result = toNode(sc)
+  result.children.add(child)
 
 # ---------------------------------------------------------------------------
 # Card
@@ -344,6 +397,80 @@ proc card*(children: varargs[ViewNode]): ViewNode =
   toNode(c)
 
 # ---------------------------------------------------------------------------
+# Settings forms, banners, feed rows
+# ---------------------------------------------------------------------------
+
+proc formRow*(labelText: string, control: ViewNode,
+              valueText = ""): ViewNode =
+  ## A settings-style row: label on the left, `control` stretched across
+  ## the middle, optional readout (e.g. "10.5 pt") on the right.
+  if valueText.len > 0:
+    row(text(labelText), expanded(control), p(valueText))
+  else:
+    row(text(labelText), expanded(control))
+
+proc sliderRow*(labelText: string, value = 50.0, low = 0.0, high = 100.0,
+                formatValue: proc(v: float64): string = nil,
+                onChange: proc(v: float64) = nil): ViewNode =
+  ## A settings row with a live value readout that tracks the slider.
+  let fmt = if formatValue.isNil:
+    proc(v: float64): string = $int(v.round())
+  else:
+    formatValue
+  let s = newSlider(low, high, value)
+  let readoutLabel = newLabel(fmt(value))
+  discard onChanged(s, proc(e: SliderChangedEvent) =
+    setText(readoutLabel, fmt(e.value))
+    if not onChange.isNil:
+      onChange(e.value))
+  column(text(labelText),
+    row(expanded(toNode(s)), toNode(readoutLabel))).crossAlign(caStretch)
+
+proc colorStopRow*(hexLabel, alongText: string, initial: Color,
+                   onRemove: proc(e: ButtonClickEvent) = nil,
+                   onColor: proc(c: Color) = nil): ViewNode =
+  ## One gradient-stop row: hex caption, position slider, color well,
+  ## Remove button. Wire `onColor` to persist the picked color.
+  let well = newColorWell(initial)
+  if not onColor.isNil:
+    onColorChanged(well, proc(e: ColorChangedEvent) = onColor(e.color))
+  let stopSlider = slider(50.0)
+  let removeBtn = button("Remove")
+  if not onRemove.isNil:
+    discard onClick(Button(removeBtn.view), onRemove)
+  row(
+    column(text(hexLabel), p(alongText)),
+    expanded(stopSlider),
+    toNode(well),
+    removeBtn
+  )
+
+proc infoBanner*(iconSymbol, title, subtitle, actionTitle: string,
+                 onAction: proc(e: ButtonClickEvent)): ViewNode =
+  ## An update-banner card: icon, two-line text, trailing action button.
+  card(
+    row(
+      icon(iconSymbol, 32.0),
+      expanded(column(h2(title), p(subtitle))),
+      button(actionTitle, onAction)
+    )
+  )
+
+proc feedRow*(iconSymbol, title, subtitle: string,
+              onRefresh: proc(e: ButtonClickEvent) = nil,
+              onDelete: proc(e: ButtonClickEvent) = nil): ViewNode =
+  ## A feed-list row: icon, bold title + gray subtitle, trailing
+  ## refresh/trash icon buttons.
+  let refreshBtn = iconButton("arrow.clockwise", onRefresh)
+  let deleteBtn = iconButton("trash", onDelete)
+  row(
+    icon(iconSymbol, 24.0),
+    expanded(column(text(title, 14.0, fwSemibold), p(subtitle))),
+    refreshBtn,
+    deleteBtn
+  )
+
+# ---------------------------------------------------------------------------
 # Tabs
 # ---------------------------------------------------------------------------
 
@@ -368,6 +495,9 @@ proc tabs*(pages: openArray[tuple[label: string,
 
 proc sidebar*(items: openArray[string]): ViewNode =
   ## A sidebar listing `items`; selection tracked internally.
+  ## Tip: inside a stretched row, anchor it top with
+  ## `column(sizedBox(width = 200.0, child = sidebar(...)), spacer())`,
+  ## otherwise a taller-than-content viewport leaves it bottom-hugging.
   let sb = newSidebar()
   for item in items:
     discard addItem(sb, item)
@@ -518,6 +648,97 @@ proc onSelect*(n: ViewNode,
   doAssert n.view of Sidebar, "onSelect target is not a sidebar"
   onSelect(Sidebar(n.view), handler)
 
+when defined(macosx):
+  proc onTableSelection*(n: ViewNode,
+      handler: proc(e: TableSelectionEvent)): ListenerId =
+    ## Wires a selection handler on a TableView node.
+    doAssert n.view of TableView, "onTableSelection target is not a table"
+    onSelection(TableView(n.view), handler)
+
+  proc onTableSort*(n: ViewNode,
+      handler: proc(e: TableSortEvent)): ListenerId =
+    ## Wires a header-sort handler on a TableView node.
+    doAssert n.view of TableView, "onTableSort target is not a table"
+    onSort(TableView(n.view), handler)
+
+  proc onTableActivate*(n: ViewNode,
+      handler: proc(e: TableActivateEvent)): ListenerId =
+    ## Wires a double-click handler on a TableView node.
+    doAssert n.view of TableView, "onTableActivate target is not a table"
+    onActivate(TableView(n.view), handler)
+
+  proc onOutlineSelection*(n: ViewNode,
+      handler: proc(e: OutlineSelectionEvent)): ListenerId =
+    ## Wires a selection handler on an OutlineView node.
+    doAssert n.view of OutlineView, "onOutlineSelection target is not an outline"
+    onSelection(OutlineView(n.view), handler)
+
+  proc onOutlineExpand*(n: ViewNode,
+      handler: proc(e: OutlineExpandEvent)): ListenerId =
+    ## Wires an expand handler on an OutlineView node.
+    doAssert n.view of OutlineView, "onOutlineExpand target is not an outline"
+    onExpand(OutlineView(n.view), handler)
+
+  proc onOutlineCollapse*(n: ViewNode,
+      handler: proc(e: OutlineCollapseEvent)): ListenerId =
+    ## Wires a collapse handler on an OutlineView node.
+    doAssert n.view of OutlineView, "onOutlineCollapse target is not an outline"
+    onCollapse(OutlineView(n.view), handler)
+
+  proc onOutlineActivate*(n: ViewNode,
+      handler: proc(e: OutlineActivateEvent)): ListenerId =
+    ## Wires a double-click handler on an OutlineView node.
+    doAssert n.view of OutlineView, "onOutlineActivate target is not an outline"
+    onActivate(OutlineView(n.view), handler)
+
+  proc onTableCheck*(n: ViewNode,
+      handler: proc(e: TableCheckEvent)): ListenerId =
+    ## Wires a checkbox-toggled handler on a TableView node.
+    doAssert n.view of TableView, "onTableCheck target is not a table"
+    onCheck(TableView(n.view), handler)
+
+  proc onTableEdit*(n: ViewNode,
+      handler: proc(e: TableEditEvent)): ListenerId =
+    ## Wires a cell-commit handler on a TableView node.
+    doAssert n.view of TableView, "onTableEdit target is not a table"
+    onEdit(TableView(n.view), handler)
+
+  proc onTableReorder*(n: ViewNode,
+      handler: proc(e: TableReorderEvent)): ListenerId =
+    ## Wires a row-drop handler on a TableView node.
+    doAssert n.view of TableView, "onTableReorder target is not a table"
+    onReorder(TableView(n.view), handler)
+
+  proc onTableFileDrop*(n: ViewNode,
+      handler: proc(e: TableFileDropEvent)): ListenerId =
+    ## Wires a file-drop handler on a TableView node.
+    doAssert n.view of TableView, "onTableFileDrop target is not a table"
+    onFileDrop(TableView(n.view), handler)
+
+  proc onOutlineCheck*(n: ViewNode,
+      handler: proc(e: OutlineCheckEvent)): ListenerId =
+    ## Wires a checkbox-toggled handler on an OutlineView node.
+    doAssert n.view of OutlineView, "onOutlineCheck target is not an outline"
+    onCheck(OutlineView(n.view), handler)
+
+  proc onOutlineEdit*(n: ViewNode,
+      handler: proc(e: OutlineEditEvent)): ListenerId =
+    ## Wires a cell-commit handler on an OutlineView node.
+    doAssert n.view of OutlineView, "onOutlineEdit target is not an outline"
+    onEdit(OutlineView(n.view), handler)
+
+  proc onOutlineMove*(n: ViewNode,
+      handler: proc(e: OutlineMoveEvent)): ListenerId =
+    ## Wires a node-drop handler on an OutlineView node.
+    doAssert n.view of OutlineView, "onOutlineMove target is not an outline"
+    onMove(OutlineView(n.view), handler)
+
+  proc onOutlineFileDrop*(n: ViewNode,
+      handler: proc(e: OutlineFileDropEvent)): ListenerId =
+    ## Wires a file-drop handler on an OutlineView node.
+    doAssert n.view of OutlineView, "onOutlineFileDrop target is not an outline"
+    onFileDrop(OutlineView(n.view), handler)
+
 proc onChanged*(n: ViewNode,
                 handler: proc(e: AccordionChangedEvent)): ListenerId =
   ## Wires an expand/collapse handler on an Accordion node.
@@ -559,6 +780,65 @@ proc onJsResult*(n: ViewNode,
   ## Wires a JS-evaluation-result handler on a WebView node.
   doAssert n.view of WebView, "onJsResult target is not a webview"
   onJsResult(WebView(n.view), handler)
+
+proc onNavigationRequested*(n: ViewNode,
+    handler: proc(e: WebViewNavigationEvent)): ListenerId =
+  ## Wires a navigation-policy handler on a WebView node.
+  doAssert n.view of WebView, "onNavigationRequested target is not a webview"
+  onNavigationRequested(WebView(n.view), handler)
+
+proc onJsAlert*(n: ViewNode,
+    handler: proc(e: WebViewAlertEvent)): ListenerId =
+  doAssert n.view of WebView, "onJsAlert target is not a webview"
+  onJsAlert(WebView(n.view), handler)
+
+proc onJsConfirm*(n: ViewNode,
+    handler: proc(e: WebViewConfirmEvent)): ListenerId =
+  doAssert n.view of WebView, "onJsConfirm target is not a webview"
+  onJsConfirm(WebView(n.view), handler)
+
+proc onJsPrompt*(n: ViewNode,
+    handler: proc(e: WebViewPromptEvent)): ListenerId =
+  doAssert n.view of WebView, "onJsPrompt target is not a webview"
+  onJsPrompt(WebView(n.view), handler)
+
+proc onNewWindow*(n: ViewNode,
+    handler: proc(e: WebViewNewWindowEvent)): ListenerId =
+  doAssert n.view of WebView, "onNewWindow target is not a webview"
+  onNewWindow(WebView(n.view), handler)
+
+proc onPdfResult*(n: ViewNode,
+    handler: proc(e: WebViewPdfEvent)): ListenerId =
+  doAssert n.view of WebView, "onPdfResult target is not a webview"
+  onPdfResult(WebView(n.view), handler)
+
+proc onSnapshotResult*(n: ViewNode,
+    handler: proc(e: WebViewSnapshotEvent)): ListenerId =
+  doAssert n.view of WebView, "onSnapshotResult target is not a webview"
+  onSnapshotResult(WebView(n.view), handler)
+
+proc onCookiesResult*(n: ViewNode,
+    handler: proc(e: WebViewCookiesEvent)): ListenerId =
+  doAssert n.view of WebView, "onCookiesResult target is not a webview"
+  onCookiesResult(WebView(n.view), handler)
+
+when defined(macosx):
+  proc webviewEx*(opts: WebViewOptions): ViewNode =
+    ## An embedded browser with full options (private store, custom UA).
+    toNode(newWebViewEx(opts))
+
+  proc withContextMenu*(n: ViewNode, m: Menu): ViewNode =
+    ## Attaches `m` as the right-click menu of `n` and returns `n`
+    ## for chaining inside `row`/`column` trees.
+    setContextMenu(n.view, m)
+    n
+
+  proc mainMenuBar*(app: Application, appName: string): StandardMenuBar =
+    ## Builds the standard App/Edit/Window/Help bar and installs it as
+    ## the application menu in one call. Insert custom top menus
+    ## (File, View, …) into `result.bar` with `addTopMenu` afterwards.
+    result = standardMenuBar(appName)
+    app.setMainMenu(result.bar)
 
 # ---------------------------------------------------------------------------
 # Text helpers routed by runtime widget kind

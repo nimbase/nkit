@@ -223,3 +223,30 @@ proc setCrossAlign*(v: View, vertical: bool, align: int) =
   ## align: 0=fill, 1=center, 2=start, 3=end
   when defined(linux):
     naViewSetCrossAlign(v.native, vertical, cint(align))
+
+when defined(macosx):
+  import ../menu
+
+  proc setContextMenu*(v: View, m: Menu) =
+    ## Attaches `m` as the right-click menu (`NSView.menu`).
+    ## Pass nil to detach. The menu shows automatically on
+    ## right-mouse / control-click; mutate it in a `MenuOpenedEvent`
+    ## handler for dynamic items.
+    let key = if m.isNil: 0'u32 else: m.nativeKey
+    naViewSetContextMenu(v.native, key)
+
+  proc getContextMenu*(v: View): Menu =
+    ## Returns the attached menu, or nil when none.
+    findMenuByKey(naViewGetContextMenu(v.native))
+
+  proc clearContextMenu*(v: View) =
+    ## Detaches any right-click menu.
+    naViewSetContextMenu(v.native, 0)
+
+  proc hasContextMenu*(v: View): bool =
+    naViewGetContextMenu(v.native) != 0
+
+  proc openContextMenu*(v: View): bool =
+    ## Shows the attached menu programmatically at the cursor.
+    ## Returns false when no menu is attached.
+    naViewOpenContextMenu(v.native)

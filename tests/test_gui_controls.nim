@@ -50,6 +50,45 @@ suite "button":
     check getState(b1) == csOn
     check getState(b2) == csOff
 
+  test "symbol and bordered round trips":
+    let b = newButton("", bsPush)
+    defer:
+      destroy(b)
+    check b.isBordered()
+    b.setSymbol("arrow.clockwise")
+    b.setBordered(false)
+    check not b.isBordered()
+    b.clearSymbol()
+    b.setBordered(true)
+    check b.isBordered()
+
+  test "checkbox and radio styles":
+    let c = newButton("Accept", bsCheckBox)
+    let r = newButton("Choice", bsRadio)
+    defer:
+      destroy(c)
+      destroy(r)
+    c.setState(csOn)
+    check c.getState() == csOn
+    r.setState(csOn)
+    check r.getState() == csOn
+
+  test "iconButton sugar builds borderless icon button":
+    var node = iconButton("trash")
+    let b = Button(node.view)
+    defer:
+      destroy(b)
+    check not b.isBordered()
+    var clicks = 0
+    var node2 = iconButton("arrow.clockwise", proc(e: ButtonClickEvent) =
+      inc clicks)
+    let b2 = Button(node2.view)
+    defer:
+      destroy(b2)
+    fireClick(b2)
+    discard runMainThreadLoopFor(100)
+    check clicks == 1
+
 suite "label":
   test "text and styling round trips":
     let l = newLabel("Hello")

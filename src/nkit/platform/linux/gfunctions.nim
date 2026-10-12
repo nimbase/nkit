@@ -178,6 +178,12 @@ proc naButtonSetState*(viewPtr: pointer, state: cint) {.importc: "na_button_set_
 proc naButtonGetState*(viewPtr: pointer): cint {.importc: "na_button_get_state".}
 proc naButtonSetEnabled*(viewPtr: pointer, enabled: bool) {.importc: "na_button_set_enabled".}
 proc naButtonIsEnabled*(viewPtr: pointer): bool {.importc: "na_button_is_enabled".}
+proc naButtonSetSymbol*(viewPtr: pointer, symbolName: cstring) {.
+  importc: "na_button_set_symbol".}
+proc naButtonSetBordered*(viewPtr: pointer, bordered: bool) {.
+  importc: "na_button_set_bordered".}
+proc naButtonIsBordered*(viewPtr: pointer): bool {.
+  importc: "na_button_is_bordered".}
 proc naButtonFire*(widgetId: uint32) {.importc: "na_button_fire".}
 
 proc naLabelCreate*(): pointer {.importc: "na_label_create".}
@@ -198,6 +204,24 @@ proc naSeparatorCreate*(orientation: cint): pointer {.importc: "na_separator_cre
 proc naSeparatorFree*(viewPtr: pointer) {.importc: "na_separator_free".}
 proc naSeparatorSetThickness*(viewPtr: pointer, thickness: float64) {.
   importc: "na_separator_set_thickness".}
+
+type NaColorwellEventFn* = proc(widgetId: uint32, ctx: pointer) {.cdecl.}
+
+proc naColorwellSetEventCallback*(fn: NaColorwellEventFn, ctx: pointer) {.
+  importc: "na_colorwell_set_event_callback".}
+proc naColorwellCreate*(widgetId: uint32): pointer {.
+  importc: "na_colorwell_create".}
+proc naColorwellFree*(widgetId: uint32, viewPtr: pointer) {.
+  importc: "na_colorwell_free".}
+proc naColorwellSetColor*(viewPtr: pointer, r, g, b, a: uint8) {.
+  importc: "na_colorwell_set_color".}
+proc naColorwellGetColor*(viewPtr: pointer, outR, outG, outB, outA: ptr uint8) {.
+  importc: "na_colorwell_get_color".}
+proc naColorwellSetEnabled*(viewPtr: pointer, enabled: bool) {.
+  importc: "na_colorwell_set_enabled".}
+proc naColorwellIsEnabled*(viewPtr: pointer): bool {.
+  importc: "na_colorwell_is_enabled".}
+proc naColorwellFire*(widgetId: uint32) {.importc: "na_colorwell_fire".}
 
 type NaInputEventFn* = proc(widgetId: uint32, ctx: pointer) {.cdecl.}
 
@@ -654,8 +678,22 @@ proc naToolbarAttach*(windowId: uint32): int64 {.importc: "na_toolbar_attach".}
 type NaToolbarClickFn* = proc(widgetId: cuint, ctx: pointer) {.cdecl.}
 proc naToolbarSetClickCallback*(fn: NaToolbarClickFn) {.importc: "na_toolbar_set_click_callback".}
 proc naToolbarAddItem*(handle: int64, label: cstring, symbolName: cstring, widgetId: cuint): cint {.importc: "na_toolbar_add_item".}
+proc naToolbarAddSpace*(handle: int64, flexible: bool, widgetId: cuint): cint {.importc: "na_toolbar_add_space".}
+proc naToolbarAddSearch*(handle: int64, placeholder: cstring, widgetId: cuint): cint {.importc: "na_toolbar_add_search".}
 proc naToolbarRemoveItem*(handle: int64, widgetId: cuint) {.importc: "na_toolbar_remove_item".}
 proc naToolbarItemCount*(handle: int64): cint {.importc: "na_toolbar_item_count".}
+proc naToolbarSetItemTooltip*(handle: int64, widgetId: cuint, tooltip: cstring) {.importc: "na_toolbar_set_item_tooltip".}
+proc naToolbarSetItemEnabled*(handle: int64, widgetId: cuint, enabled: bool) {.importc: "na_toolbar_set_item_enabled".}
+proc naToolbarIsItemEnabled*(handle: int64, widgetId: cuint): bool {.importc: "na_toolbar_is_item_enabled".}
+proc naToolbarSetDisplayMode*(handle: int64, mode: cint) {.importc: "na_toolbar_set_display_mode".}
+proc naToolbarSetSizeMode*(handle: int64, small: bool) {.importc: "na_toolbar_set_size_mode".}
+proc naToolbarSetAllowsCustomization*(handle: int64, allowed: bool) {.importc: "na_toolbar_set_allows_customization".}
+proc naToolbarSetShowsBaselineSeparator*(handle: int64, show: bool) {.importc: "na_toolbar_set_shows_baseline_separator".}
+proc naToolbarSetSelectedItem*(handle: int64, widgetId: cuint) {.importc: "na_toolbar_set_selected_item".}
+proc naToolbarGetSearchText*(handle: int64, widgetId: cuint): cstring {.importc: "na_toolbar_get_search_text".}
+type NaToolbarSearchFn* = proc(widgetId: cuint, submitted: bool, text: cstring) {.cdecl.}
+proc naToolbarSetSearchCallback*(fn: NaToolbarSearchFn) {.importc: "na_toolbar_set_search_callback".}
+proc naToolbarFireSearch*(widgetId: cuint, submitted: bool, text: cstring) {.importc: "na_toolbar_fire_search".}
 
 # View alpha (for animations)
 proc naViewSetAlpha*(viewPtr: pointer, alpha: float64) {.importc: "na_view_set_alpha".}

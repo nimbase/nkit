@@ -105,6 +105,28 @@ proc getState*(b: Button): ControlState =
   else:
     csOff
 
+proc setSymbol*(b: Button, symbolName: string) =
+  ## Shows a platform symbol next to (or instead of, when the title is
+  ## empty) the button title. SF Symbols on macOS/iOS, freedesktop icon
+  ## names on Linux. Empty string clears the image.
+  when defined(macosx) or defined(ios) or defined(linux):
+    naButtonSetSymbol(b.native, symbolName.cstring)
+
+proc clearSymbol*(b: Button) =
+  when defined(macosx) or defined(ios) or defined(linux):
+    naButtonSetSymbol(b.native, "")
+
+proc setBordered*(b: Button, bordered: bool) =
+  ## Borderless (`false`) icon-only buttons suit refresh/trash style rows.
+  when defined(macosx) or defined(ios) or defined(linux):
+    naButtonSetBordered(b.native, bordered)
+
+proc isBordered*(b: Button): bool =
+  when defined(macosx) or defined(ios) or defined(linux):
+    naButtonIsBordered(b.native)
+  else:
+    true
+
 proc onClick*(b: Button, handler: proc(e: ButtonClickEvent)): ListenerId {.discardable.} =
   addListener[GuiEvent, ButtonClickEvent](b, handler)
 

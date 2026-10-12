@@ -21,6 +21,14 @@ static struct {
   na_app_exit_fn on_exiting;
 } g_app_callbacks = {NULL, NULL, NULL, NULL, NULL, NULL};
 
+static na_app_fn g_on_dock_reopen = NULL;
+static void* g_dock_reopen_ctx = NULL;
+
+void na_app_set_dock_reopen_callback(na_app_fn fn, void* ctx) {
+  g_on_dock_reopen = fn;
+  g_dock_reopen_ctx = ctx;
+}
+
 @interface NAAppDelegate : NSObject <NSApplicationDelegate>
 @end
 
@@ -72,6 +80,18 @@ static struct {
     return nil;
   }
   return (__bridge NSMenu*)na_menu_native_ptr(g_dock_menu_id);
+}
+
+- (BOOL)applicationShouldHandleReopen:(NSApplication*)sender
+                    hasVisibleWindows:(BOOL)flag {
+  (void)sender;
+  (void)flag;
+  @autoreleasepool {
+    if (g_on_dock_reopen) {
+      g_on_dock_reopen(g_dock_reopen_ctx);
+    }
+  }
+  return YES;
 }
 
 @end

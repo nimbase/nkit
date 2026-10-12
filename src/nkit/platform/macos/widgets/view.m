@@ -379,3 +379,85 @@ void na_view_set_frame_callback(void* ptr, na_frame_changed_fn fn,
     view.frameCtx = ctx;
   }
 }
+
+extern void* na_menu_native_ptr(uint32_t menu_id);
+
+static NSMutableDictionary<NSValue*, NSNumber*>* g_view_menus = nil;
+
+static void ensure_view_menus(void) {
+  static BOOL initialized = NO;
+  if (!initialized) {
+    initialized = YES;
+    g_view_menus = [NSMutableDictionary dictionary];
+  }
+}
+
+void na_view_set_context_menu(void* ptr, uint32_t menu_id) {
+  NSView* view = (__bridge NSView*)ptr;
+  if (!view) {
+    return;
+  }
+  ensure_view_menus();
+  NSValue* key = [NSValue valueWithPointer:(__bridge const void*)view];
+  if (menu_id == 0) {
+    if (view.menu && [g_view_menus objectForKey:key]) {
+      view.menu = nil;
+    }
+    [g_view_menus removeObjectForKey:key];
+    return;
+  }
+  NSMenu* menu = (__bridge NSMenu*)na_menu_native_ptr(menu_id);
+  if (!menu) {
+    return;
+  }
+  view.menu = menu;
+  g_view_menus[key] = @(menu_id);
+}
+
+uint32_t na_view_get_context_menu(void* ptr) {
+  NSView* view = (__bridge NSView*)ptr;
+  if (!view) {
+    return 0;
+  }
+  ensure_view_menus();
+  NSNumber* stored =
+      g_view_menus[[NSValue valueWithPointer:(__bridge const void*)view]];
+  if (stored && view.menu) {
+    return stored.unsignedIntValue;
+  }
+  return 0;
+}
+
+// Called from na_menu_free so freed menus never dangle from views.
+void na_view_detach_menu(uint32_t menu_id) {
+  if (menu_id == 0) {
+    return;
+  }
+  ensure_view_menus();
+  NSMutableArray<NSValue*>* doomed = [NSMutableArray array];
+  for (NSValue* key in g_view_menus) {
+    if ([g_view_menus[key] unsignedIntValue] == menu_id) {
+      NSView* view = (__bridge NSView*)[key pointerValue];
+      if (view && view.menu) {
+        view.menu = nil;
+      }
+      [doomed addObject:key];
+    }
+  }
+  [g_view_menus removeObjectsForKeys:doomed];
+}
+
+bool na_view_open_context_menu(void* ptr) {
+  NSView* view = (__bridge NSView*)ptr;
+  if (!view || !view.menu) {
+    return false;
+  }
+  NSMenu* menu = view.menu;
+  NSPoint mouseBottom = [NSEvent mouseLocation];
+  dispatch_async(dispatch_get_main_queue(), ^{
+    @autoreleasepool {
+      [menu popUpMenuPositioningItem:nil atLocation:mouseBottom inView:nil];
+    }
+  });
+  return true;
+}

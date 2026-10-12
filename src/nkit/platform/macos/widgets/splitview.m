@@ -8,7 +8,12 @@ void* na_split_view_create(bool vertical) {
   NSSplitView* split = [[NSSplitView alloc] initWithFrame:NSMakeRect(0, 0, 300, 200)];
   split.vertical = vertical ? YES : NO;
   split.dividerStyle = NSSplitViewDividerStyleThin;
-  split.translatesAutoresizingMaskIntoConstraints = NO;
+  // NOTE: keep translatesAutoresizingMaskIntoConstraints at its default YES.
+  // nkit positions this view with explicit frames, and NSSplitView manages
+  // its arranged subviews through the translated autoresizing constraints.
+  // Setting NO here (with no explicit constraints added) lets the layout
+  // engine resolve the split island from content alone and overwrite the
+  // solver-assigned frame.
   na_gui_register_view(split);
   return (__bridge void*)split;
 }
@@ -17,7 +22,8 @@ void na_split_view_add_pane(void* ptr, void* child_ptr) {
   NSSplitView* split = (__bridge NSSplitView*)ptr;
   NSView* child = (__bridge NSView*)child_ptr;
   if (split && child) {
-    child.translatesAutoresizingMaskIntoConstraints = NO;
+    // Keep the default YES for the same reason as above: NSSplitView owns
+    // these constraints and updates them on layout and divider drags.
     [split addArrangedSubview:child];
   }
 }

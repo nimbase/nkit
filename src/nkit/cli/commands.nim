@@ -4,6 +4,7 @@ import pkg/kapsis/interactive/prompts
 import ./project
 import ./ios
 import ./scaffold
+import ./dmg
 
 ## Implementations of the nkit CLI commands, loaded by src/nkit.nim
 ## inside its `when isMainModule` branch.
@@ -213,6 +214,61 @@ proc runtimesInstallCommand*(v: Values) =
   if installSimulatorRuntime(name) != 0:
     displayError("runtime installation failed", quitProcess = true)
   displaySuccess("installed " & name & "; refresh with: nkit devices --available")
+
+proc flagItems(v: Values, names: openArray[string]): seq[string] =
+  ## Concatenates the values of a repeatable flag declared under any of
+  ## `names`. Kapsis keys values by the spelling used in the declaration, so
+  ## a flag exposed as both `-f` and `--file` arrives as two separate lists.
+  for name in names:
+    if v.has(name):
+      result.add v.get(name).getItems
+
+proc bundleCommand*(v: Values) =
+  when not defined(macosx):
+    displayError("nkit bundle is only supported on macOS", quitProcess = true)
+  else:
+    # packaging is driven by an .app on disk rather than by nkit.yaml, so it
+    # works in any directory holding a built app
+    var appBundle =
+      if v.has("app"): v.get("app").getFilepath
+      else: ""
+    var outPath, volName, imageFormat, fs: string
+    var entries: seq[VolumeEntry]
+    try:
+      if appBundle.len == 0:
+        appBundle = discoverAppBundle()
+      if appBundle.len == 0:
+        displayError("no app bundle found under " &
+          outDirFor(pfMacos, "build") &
+          "; run `nkit build macos` first, or name one: nkit bundle App.app",
+          quitProcess = true)
+      if not dirExists(appBundle):
+        displayError("no app bundle at " & appBundle, quitProcess = true)
+      outPath =
+        if v.has("--out"): v.get("--out").getStr
+        elif v.has("-o"): v.get("-o").getStr
+        else: defaultDmgPath(appBundle)
+      volName =
+        if v.has("--volname"): v.get("--volname").getStr
+        else: appNameFrom(appBundle)
+      imageFormat = if v.has("--format"): v.get("--format").getAny else: ""
+      fs = if v.has("--fs"): v.get("--fs").getAny else: ""
+      entries = volumeEntries(appBundle,
+        flagItems(v, ["--file", "-f"]), flagItems(v, ["--dir", "-d"]))
+    except ValueError as e:
+      displayError(e.msg, quitProcess = true)
+
+    let
+      appName = appNameFrom(appBundle)
+      stageDir = stagePath(parentDir(outPath), appName)
+    displayInfo("staging " & $entries.len & " items in " & stageDir)
+    discard stageVolume(stageDir, entries, not v.has("--no-applications"))
+
+    displayInfo("creating " & outPath)
+    if createDmg(stageDir, volName, outPath, imageFormat, fs) != 0:
+      displayError("hdiutil failed to create " & outPath, quitProcess = true)
+    displaySuccess("created " & outPath)
+    display("mount it with: open " & outPath)
 
 proc cleanCommand*(v: Values) =
   removeDir("build")

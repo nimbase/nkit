@@ -39,7 +39,8 @@ idiomatic Nim surface.
 - Built-in WebView with full configuration support
 - Menu bar and system tray integration
 - Display management and multi-monitor handling
-- Cross-platform CLI for scaffolding, building, and running apps
+- Cross-platform CLI for scaffolding, building, running and packaging apps
+- Disk image packaging for macOS, including drag-to-install volumes
 
 ### CLI application
 ```
@@ -55,8 +56,45 @@ Simulator runtimes
   runtimes.list                      Show the runtimes installed on this machine
   runtimes.install <name> ⚑          Download e.g. "iOS 18" or "watchOS 10"
   logs <platform> ⚑                  Stream simulator logs for the app process
+Distribution
+  bundle ⚑                           Package a macOS .app into a .dmg (macOS only)
   clean                              Remove the build directory
 ```
+
+#### Packaging a macOS app
+`nkit build macos` produces `build/macos/<name>.app`. `nkit bundle` turns an `.app` bundle into
+a compressed disk image, the shape a `.dmg` is normally distributed in.
+
+`bundle` reads no project configuration at all: there is nothing to initialise and no
+`nkit.yaml` in scope. You name the bundle to package, and with no argument it takes the
+single `.app` under `build/macos`. It also works on an app built by other means.
+
+```sh
+$ nkit bundle build/macos/Counter.app -f README.md -d licenses
+```
+
+The mounted volume holds the app, every file and directory you added, and a shortcut to
+`/Applications` for dragging the app across. Files and directories are placed at the volume
+root under their own name, so `-d licenses` becomes `<volume>/licenses`. Passing
+`-f .VolumeIcon.icns` sets a custom volume icon, which is how `create-dmg` does it too.
+
+| Argument | Default | Purpose |
+| --- | --- | --- |
+| `<app>` | the sole `.app` under `build/macos` | The `.app` bundle to package |
+| `-f`, `--file` | none | Add a file to the volume root; repeat for more |
+| `-d`, `--dir` | none | Add a directory to the volume root; repeat for more |
+| `-o`, `--out` | beside the app, `<name>.dmg` | Where to write the image |
+| `--volname` | the app name | Name the mounted volume |
+| `--format` | hdiutil's choice | `ULFO` (lzfse), `UDZO` (zlib) or `UDBZ` |
+| `--fs` | derived from the source | `HFS+` or `APFS` |
+| `--no-applications` | off | Leave out the `/Applications` shortcut |
+
+`--format` and `--fs` are only passed to `hdiutil` when you ask for them, so the defaults
+track macOS rather than being frozen into this tool. The image is written beside the app,
+which keeps it inside `build/` and lets `nkit clean` remove it along with the scratch
+directory used to assemble the volume. Icon positions inside the mounted window are
+Finder's own default; there is no Finder scripting involved, which keeps the command
+scriptable and free of Automation permission prompts.
 
 ## One app, three APIs
 

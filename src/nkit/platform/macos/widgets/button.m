@@ -113,6 +113,41 @@ bool na_button_is_enabled(void* ptr) {
   return button ? button.enabled == YES : false;
 }
 
+void na_button_set_symbol(void* ptr, const char* symbol_name) {
+  NSButton* button = (__bridge NSButton*)ptr;
+  if (!button) {
+    return;
+  }
+  if (!symbol_name || symbol_name[0] == '\0') {
+    button.image = nil;
+    return;
+  }
+  NSString* name = [NSString stringWithUTF8String:symbol_name];
+  NSImage* image = nil;
+  if (@available(macOS 11.0, *)) {
+    image = [NSImage imageWithSystemSymbolName:name
+                      accessibilityDescription:nil];
+  }
+  button.image = image;
+  if (image && button.title.length == 0) {
+    button.imagePosition = NSImageOnly;
+  } else {
+    button.imagePosition = NSImageLeft;
+  }
+}
+
+void na_button_set_bordered(void* ptr, bool bordered) {
+  NSButton* button = (__bridge NSButton*)ptr;
+  if (button) {
+    button.bordered = bordered ? YES : NO;
+  }
+}
+
+bool na_button_is_bordered(void* ptr) {
+  NSButton* button = (__bridge NSButton*)ptr;
+  return button ? button.bordered == YES : false;
+}
+
 void na_button_fire(uint32_t widget_id) {
   ensure_button_tables();
   NAGenericTarget* target = g_button_targets[@(widget_id)];

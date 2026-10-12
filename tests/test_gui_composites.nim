@@ -231,6 +231,36 @@ suite "accordion":
     collapseAll(acc)
     check expandedIndices(acc).len == 0
 
+suite "settings forms, banners, feed rows":
+  test "formRow lays out label control and value":
+    let withVal = formRow("Fill With", pick(@["Color", "Gradient"]),
+                          "Gradient")
+    check withVal.children.len == 3
+    let plain = formRow("Kind", segmented(@["Linear", "Radial"]))
+    check plain.children.len == 2
+
+  test "sliderRow builds label row and live readout":
+    var last = -1.0
+    let n = sliderRow("Angle", 180.0, 0.0, 360.0,
+      onChange = proc(v: float64) = last = v)
+    check n.children.len == 2
+    check n.children[1].children.len == 2
+    check last < 0.0
+
+  test "colorStopRow builds hex slider well and remove":
+    var removed = 0
+    let n = colorStopRow("#1482ca", "11% along", color(0x14, 0x82, 0xca),
+      onRemove = proc(e: ButtonClickEvent) = inc removed)
+    check n.children.len == 4
+
+  test "infoBanner and feedRow construct":
+    let b = infoBanner("w.circle", "Software update",
+      "Whatever 0.3.0 is installed.", "Check for Updates",
+      proc(e: ButtonClickEvent) = discard)
+    check b.view != nil
+    let f = feedRow("p.circle", "Product Hunt", "42 unread - ok")
+    check f.children.len == 4
+
 suite "card stacking regression":
   test "multiple addToContent children stack vertically, no overlap":
     let card = newCard("Stacking", "children must not overlap")

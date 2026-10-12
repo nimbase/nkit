@@ -26,6 +26,9 @@ type
   ApplicationActivatedEvent* = ref object of ApplicationEvent
   ApplicationDeactivatedEvent* = ref object of ApplicationEvent
   ApplicationQuitRequestedEvent* = ref object of ApplicationEvent
+  ApplicationDockReopenEvent* = ref object of ApplicationEvent
+    ## Dock icon click with no visible windows
+    ## (`applicationShouldHandleReopen`, macOS only).
 
 method typeName(e: ApplicationEvent): string = "ApplicationEvent"
 method typeName(e: ApplicationStartedEvent): string = "ApplicationStartedEvent"
@@ -33,6 +36,7 @@ method typeName(e: ApplicationExitingEvent): string = "ApplicationExitingEvent"
 method typeName(e: ApplicationActivatedEvent): string = "ApplicationActivatedEvent"
 method typeName(e: ApplicationDeactivatedEvent): string = "ApplicationDeactivatedEvent"
 method typeName(e: ApplicationQuitRequestedEvent): string = "ApplicationQuitRequestedEvent"
+method typeName(e: ApplicationDockReopenEvent): string = "ApplicationDockReopenEvent"
 
 proc newApplicationStartedEvent*(): ApplicationStartedEvent =
   result = ApplicationStartedEvent()
@@ -52,6 +56,10 @@ proc newApplicationDeactivatedEvent*(): ApplicationDeactivatedEvent =
 
 proc newApplicationQuitRequestedEvent*(): ApplicationQuitRequestedEvent =
   result = ApplicationQuitRequestedEvent()
+  discard stamp(result)
+
+proc newApplicationDockReopenEvent*(): ApplicationDockReopenEvent =
+  result = ApplicationDockReopenEvent()
   discard stamp(result)
 
 import ./window
@@ -76,6 +84,12 @@ when defined(macosx) or defined(ios) or defined(linux):
   proc onQuitRequestedTrampoline(ctx: pointer) {.cdecl.} =
     cast[Application](ctx).emit(newApplicationQuitRequestedEvent())
 
+  proc onDockReopenTrampoline*(ctx: pointer) {.cdecl.} =
+    ## Dock icon click. Exported so dock tests can simulate it headless.
+    let app = cast[Application](ctx)
+    if not app.isNil:
+      app.emit(newApplicationDockReopenEvent())
+
   proc onExitingTrampoline(exitCode: cint, ctx: pointer) {.cdecl.} =
     let app = cast[Application](ctx)
     app.exitCode = int(exitCode)
@@ -97,6 +111,8 @@ proc initApplication*(): Application =
           onDeactivatedTrampoline,
           onQuitRequestedTrampoline,
           onExitingTrampoline)
+        when defined(macosx):
+          naAppSetDockReopenCallback(onDockReopenTrampoline, cast[pointer](result))
         result.emit(newApplicationStartedEvent())
     sharedApp = result
   else:
@@ -140,6 +156,19 @@ proc getDockMenuKey*(app: Application): uint32 =
     naAppDockMenu()
   else:
     0
+
+when defined(macosx):
+  proc setMainMenu*(app: Application, menu: Menu) =
+    ## Installs `menu` as the application menu bar (`NSApp.mainMenu`).
+    ## Top-level items each carry a submenu: App, File, Edit, ….
+    ensureMenuCallbacks()
+    naAppSetMainMenu(menu.nativeKey)
+
+  proc clearMainMenu*(app: Application) =
+    naAppSetMainMenu(0)
+
+  proc getMainMenuKey*(app: Application): uint32 =
+    naAppGetMainMenu()
 
 proc quitApp*(app: Application, exitCode = 0) =
   app.exitCode = exitCode
