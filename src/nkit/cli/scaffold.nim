@@ -15,6 +15,17 @@ author: "$4"
 dependencies:
   nkit: ">= 0.1.0"
 
+# Extra resources bundled with the app (macOS/iOS). Each directory's
+# contents are copied into <App>.app/Resources/ at build time, preserving
+# their project-relative paths.
+# assets:
+#   - assets/images
+#   - assets/data
+# App icon: a .icns file or an .iconset directory, relative to the
+# project root. Installed into Resources/ and published via
+# CFBundleIconFile.
+# icon: assets/icon/AppIcon.icns
+
 ios:
   bundle_id: $5
   min_version: "15.0"

@@ -132,8 +132,16 @@ proc upsertPlatformConfig*(platform: Platform, cfg: ProjectConfig,
     content.add(blockText)
   writeFile("config.nims", content)
 
-func renderInfoPlist*(name, bundleId, version: string): string =
-  ## Renders a minimal Info.plist for an .app bundle.
+func renderInfoPlist*(name, bundleId, version: string,
+                      iconName = ""): string =
+  ## Renders a minimal Info.plist for an .app bundle. When `iconName` is
+  ## given, a CFBundleIconFile entry points at Resources/<iconName>.icns.
+  let iconBlock =
+    if iconName.len > 0:
+      "    <key>CFBundleIconFile</key>\n    <string>" & iconName &
+      "</string>\n"
+    else:
+      ""
   """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -154,11 +162,12 @@ func renderInfoPlist*(name, bundleId, version: string): string =
     <string>$3</string>
     <key>CFBundleVersion</key>
     <string>$3</string>
-    <key>LSRequiresIPhoneOS</key>
+$4    <key>LSRequiresIPhoneOS</key>
     <true/>
 </dict>
 </plist>
-""".replace("$1", bundleId).replace("$2", name).replace("$3", version)
+""".replace("$1", bundleId).replace("$2", name).replace("$3", version) .
+    replace("$4", iconBlock)
 
 # --- process wrappers ------------------------------------------------------
 

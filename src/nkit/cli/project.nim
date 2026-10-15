@@ -21,6 +21,14 @@ type
     author*: string
     dependencies*: OrderedTable[string, string]
       ## Additional nimble requirements beyond the generated baseline
+    assets*: seq[string]
+      ## Resource dirs/files (relative to the project root) copied into
+      ## <App>.app/Resources/ at build time, preserving their relative
+      ## paths. macOS/iOS only; empty by default.
+    icon*: string
+      ## App icon: a .icns file or an .iconset directory, relative to the
+      ## project root. Copied/converted into Resources/ and published via
+      ## CFBundleIconFile. Empty by default.
     ios*: IosConfig
 
 const

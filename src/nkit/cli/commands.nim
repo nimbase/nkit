@@ -3,6 +3,7 @@ import pkg/kapsis
 import pkg/kapsis/interactive/prompts
 import ./project
 import ./ios
+import ./assets
 import ./scaffold
 import ./dmg
 
@@ -131,8 +132,31 @@ proc buildCommand*(v: Values) =
       displayError("build failed", quitProcess = true)
 
   if platform != pfLinux:
+    # Bundle resources (macOS/iOS only): assets land in Resources/
+    # preserving their project-relative paths; an icon is installed at
+    # the Resources root and published via CFBundleIconFile.
+    var iconName = ""
+    if cfg.assets.len > 0 or cfg.icon.len > 0:
+      let resDir = resourcesDirFor(platform, outDir, cfg.name)
+      createDir(resDir)
+      if cfg.assets.len > 0:
+        try:
+          let copied = copyAssets(projectDir, cfg.assets, resDir)
+          displayInfo("bundled " & $copied & " asset file(s)")
+        except ValueError as e:
+          displayError(e.msg, quitProcess = true)
+      if cfg.icon.len > 0:
+        try:
+          iconName = installIcon(projectDir, cfg.icon, resDir)
+          displayInfo("set application icon: " & iconName)
+        except ValueError as e:
+          displayError(e.msg, quitProcess = true)
+        except IOError as e:
+          displayError(e.msg, quitProcess = true)
+        except OSError as e:
+          displayError(e.msg, quitProcess = true)
     writeFile(appBundlePath(platform, outDir, cfg.name) / "Info.plist",
-      renderInfoPlist(cfg.name, cfg.ios.bundle_id, cfg.version))
+      renderInfoPlist(cfg.name, cfg.ios.bundle_id, cfg.version, iconName))
 
   let bundleExe = executablePath(platform, outDir, cfg.name)
   if not fileExists(bundleExe):
@@ -140,7 +164,15 @@ proc buildCommand*(v: Values) =
     # relocate into the bundle ourselves.
     let nested = bundleExe / cfg.name
     if fileExists(nested):
-      moveFile(nested, bundleExe)
+      if dirExists(bundleExe):
+        # clue treated the -o: path itself as a directory (macOS target);
+        # collapse it so the bundle executable is a file, not a folder.
+        let staged = bundleExe & ".bin"
+        moveFile(nested, staged)
+        removeDir(bundleExe)
+        moveFile(staged, bundleExe)
+      else:
+        moveFile(nested, bundleExe)
     elif fileExists(cfg.name):
       moveFile(cfg.name, bundleExe)
     else:
