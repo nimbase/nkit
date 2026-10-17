@@ -20,9 +20,11 @@ when isMainModule:
       init ?string(name), ?bool("--here"):
         ## Scaffold nkit.yaml, a nimble file and a starter app
 
-      build any(platform = ["ios", "macos"]), ?any("--pkgr" = ["nimble", "clue"]),
+      build ?any(platform = ["ios", "macos"]), ?any("--pkgr" = ["nimble", "clue"]),
            ?bool("--release"):
-        ## Produces an .app bundle under build/
+        ## Produces an .app bundle under build/, including nkit.yaml
+        ## assets and icon (Apple platforms). Omitting the platform
+        ## builds for the host desktop target (macOS on Mac, Linux on Linux)
 
       run any(platform = ["ios", "macos"]), ?string(device), ?string("--udid"):
         ## Targets the booted simulator, or a device by name
@@ -47,7 +49,8 @@ when isMainModule:
              ?list("--dir"), ?string("-o"), ?string("--out"),
              ?string("--volname"),
              ?any("--format" = ["ULFO", "UDZO", "UDBZ"]),
-             ?any("--fs" = ["HFS+", "APFS"]), ?bool("--no-applications"):
+             ?any("--fs" = ["HFS+", "APFS"]), ?bool("--no-applications"),
+             ?bool("--pkg"), ?string("--sign"):
         ## Package a macOS .app into a .dmg (macOS only)
         ##
         ## Takes the app bundle to package: nkit bundle path/to/App.app.
@@ -55,7 +58,9 @@ when isMainModule:
         ## under build/macos. Repeat -f and -d to add several files or
         ## directories to the volume root, alongside the app and the
         ## Applications shortcut. -f .VolumeIcon.icns sets a custom volume
-        ## icon.
+        ## icon. --pkg also builds a pkg installer from the app (needs a
+        ## nkit.yaml for the identifier and version) and adds it to the
+        ## volume; --sign names the identity pkgbuild signs it with.
 
       clean:
         ## Remove the build directory

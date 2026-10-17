@@ -40,25 +40,55 @@ idiomatic Nim surface.
 - Menu bar and system tray integration
 - Display management and multi-monitor handling
 - Cross-platform CLI for scaffolding, building, running and packaging apps
-- Disk image packaging for macOS, including drag-to-install volumes
+- Disk image packaging for macOS, including drag-to-install volumes and an optional pkg installer
 
 ### CLI application
 ```
-$ nkit
+$ nkit -h
 
 Development
-  init <?name> ⚑                     Scaffold nkit.yaml, a nimble file and a starter app
-  build <platform> ⚑                 Produces an .app bundle under build/
-  run <platform> <?device> ⚑         Targets the booted simulator, or a device by name
+  init <?name:string>                  Scaffold nkit.yaml, a nimble file and a starter app
+          --here:bool
+  build <?platform:any[ios,macos]>     Produces an .app bundle under build/, including nkit.yaml
+                                       assets and icon (Apple platforms). Omitting the platform
+                                       builds for the host desktop target (macOS on Mac, Linux on
+                                       Linux)
+          --pkgr:any[nimble,clue]
+                   --release:bool
+  run <platform:any[ios,macos]> <?device:string> Targets the booted simulator, or a device by name
+          --udid:string
 Diagnostics
-  devices ⚑                          List iOS Simulator devices known to Xcode
+  devices                              List iOS Simulator devices known to Xcode
+          --available:bool
 Simulator runtimes
-  runtimes.list                      Show the runtimes installed on this machine
-  runtimes.install <name> ⚑          Download e.g. "iOS 18" or "watchOS 10"
-  logs <platform> ⚑                  Stream simulator logs for the app process
+  runtimes.list                        Show the runtimes installed on this machine
+  runtimes.install <name:string>       Download e.g. "iOS 18" or "watchOS 10"
+  logs <platform:any[ios,macos]>       Stream simulator logs for the app process
+          --udid:string
 Distribution
-  bundle ⚑                           Package a macOS .app into a .dmg (macOS only)
-  clean                              Remove the build directory
+  bundle <?app:filepath>               Package a macOS .app into a .dmg (macOS only) Takes the app
+                                       bundle to package: nkit bundle path/to/App.app. Needs no
+                                       nkit.yaml, and with no argument takes the single .app under
+                                       build/macos. Repeat -f and -d to add several files or
+                                       directories to the volume root, alongside the app and the
+                                       Applications shortcut. -f .VolumeIcon.icns sets a custom
+                                       volume icon. --pkg also builds a pkg installer from the app
+                                       (needs a nkit.yaml for the identifier and version) and adds
+                                       it to the volume; --sign names the identity pkgbuild signs
+                                       it with.
+                           -f:string[]
+                       --file:string[]
+                           -d:string[]
+                        --dir:string[]
+                             -o:string
+                          --out:string
+                      --volname:string
+          --format:any[ULFO,UDZO,UDBZ]
+                   --fs:any[HFS+,APFS]
+                --no-applications:bool
+                            --pkg:bool
+                         --sign:string
+  clean                                Remove the build directory
 ```
 
 #### Packaging a macOS app
@@ -78,6 +108,19 @@ The mounted volume holds the app, every file and directory you added, and a shor
 root under their own name, so `-d licenses` becomes `<volume>/licenses`. Passing
 `-f .VolumeIcon.icns` sets a custom volume icon, which is how `create-dmg` does it too.
 
+`bundle --pkg` additionally builds a macOS installer package from the app with `pkgbuild`
+and places the resulting `<name>.pkg` at the volume root next to the app, so one `.dmg`
+offers both drag-to-install and the guided installer. The component package installs the
+app to `/Applications`; its identifier and version come from `nkit.yaml` (`bundle_id` and
+`version`), which is why `--pkg` only works inside a project directory while plain
+`bundle` works on any `.app`. The package is unsigned unless `--sign` names an installer
+identity to sign it with.
+
+```sh
+$ nkit bundle --pkg
+$ nkit bundle --pkg --sign "Developer ID Installer: Example"
+```
+
 | Argument | Default | Purpose |
 | --- | --- | --- |
 | `<app>` | the sole `.app` under `build/macos` | The `.app` bundle to package |
@@ -88,6 +131,8 @@ root under their own name, so `-d licenses` becomes `<volume>/licenses`. Passing
 | `--format` | hdiutil's choice | `ULFO` (lzfse), `UDZO` (zlib) or `UDBZ` |
 | `--fs` | derived from the source | `HFS+` or `APFS` |
 | `--no-applications` | off | Leave out the `/Applications` shortcut |
+| `--pkg` | off | Build a pkg installer from the app and add it to the volume (needs `nkit.yaml`) |
+| `--sign` | none | Installer identity `pkgbuild` signs the package with |
 
 `--format` and `--fs` are only passed to `hdiutil` when you ask for them, so the defaults
 track macOS rather than being frozen into this tool. The image is written beside the app,

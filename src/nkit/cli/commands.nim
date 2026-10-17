@@ -6,6 +6,7 @@ import ./ios
 import ./assets
 import ./scaffold
 import ./dmg
+import ./pkg
 
 ## Implementations of the nkit CLI commands, loaded by src/nkit.nim
 ## inside its `when isMainModule` branch.
@@ -21,11 +22,17 @@ proc stdinIsTty*(): bool =
   c_isatty(0) != 0
 
 proc platformFromValue(s: string): Platform =
-  case s
-  of "ios": result = pfIos
-  of "macos": result = pfMacos
-  of "linux": result = pfLinux
-  else: displayError("unsupported platform: " & s, quitProcess = true)
+  try:
+    result = parsePlatform(s)
+  except ValueError as e:
+    displayError(e.msg, quitProcess = true)
+
+proc resolvePlatform(v: Values): Platform =
+  ## Platform for build/run; omitted means the host desktop target.
+  if v.has("platform"):
+    platformFromValue(v.get("platform").getAny)
+  else:
+    defaultDesktopPlatform()
 
 proc packageManagerFromValue(v: Values): string =
   ## Resolves --pkgr; falls back to clue when omitted
@@ -82,8 +89,26 @@ proc initCommand*(v: Values) =
   display("  cd " & (if here: "." else: name))
   display("  nkit build ios")
 
+proc removeLegacyFlatBundle(platform: Platform, outDir,
+                              appName: string) =
+  ## Drops leftovers of the pre-Contents macOS layout (Info.plist, binary
+  ## and Resources at the bundle root) so stale files never shadow the new
+  ## Contents/ payload.
+  if platform != pfMacos:
+    return
+  let bundle = appBundlePath(platform, outDir, appName)
+  let legacyPlist = bundle / "Info.plist"
+  if fileExists(legacyPlist):
+    removeFile(legacyPlist)
+  let legacyExe = bundle / appName
+  if fileExists(legacyExe):
+    removeFile(legacyExe)
+  let legacyRes = bundle / "Resources"
+  if dirExists(legacyRes):
+    removeDir(legacyRes)
+
 proc buildCommand*(v: Values) =
-  let platform = platformFromValue(v.get("platform").getAny)
+  let platform = resolvePlatform(v)
   let pkgman = packageManagerFromValue(v)
   let release = v.has("--release")
   let (cfg, projectDir) = loadCurrentProject()
@@ -92,6 +117,11 @@ proc buildCommand*(v: Values) =
   let outDir = "build"
   if platform == pfLinux:
     createDir(outDirFor(platform, outDir))
+  elif platform == pfMacos:
+    # Standard Contents/ layout: the compiler target dir must exist before
+    # clue appends the binary name inside it.
+    createDir(parentDir(executablePath(platform, outDir, cfg.name)))
+    removeLegacyFlatBundle(platform, outDir, cfg.name)
   else:
     createDir(appBundlePath(platform, outDir, cfg.name))
 
@@ -101,11 +131,9 @@ proc buildCommand*(v: Values) =
     let sdk = resolveSimulatorSdk()
     upsertPlatformConfig(pfIos, cfg, sdk)
     displayInfo("building " & cfg.name & " for iOS Simulator")
-    # clue treats -o: as a directory and appends the binary name;
-    # nimble treats it as the exact file path.
     let nimArgs =
       if pkgman == "clue":
-        @["-o:\"" & appBundlePath(pfIos, outDir, cfg.name) & "\""]
+        @["-o:\"" & clueBuildTarget(pfIos, outDir, cfg.name) & "\""]
       else:
         composeNimArgs(pfIos, cfg, sdk, outDir, release)
     let cmd = pkgman & " build " & join(nimArgs, " ") & forwardExtras()
@@ -114,8 +142,13 @@ proc buildCommand*(v: Values) =
   of pfMacos:
     upsertPlatformConfig(pfMacos, cfg, "")
     displayInfo("building " & cfg.name & " for macOS")
+    let nimArgs =
+      if pkgman == "clue":
+        @["-o:\"" & clueBuildTarget(pfMacos, outDir, cfg.name) & "\""]
+      else:
+        composeNimArgs(pfMacos, cfg, "", outDir, release)
     let cmd = pkgman & " build " &
-      join(composeNimArgs(pfMacos, cfg, "", outDir, release), " ") &
+      join(nimArgs, " ") &
       forwardExtras()
     if runStreaming(cmd) != 0:
       displayError("build failed", quitProcess = true)
@@ -124,7 +157,7 @@ proc buildCommand*(v: Values) =
     displayInfo("building " & cfg.name & " for Linux")
     let nimArgs =
       if pkgman == "clue":
-        @["-o:\"" & outDirFor(pfLinux, outDir) & "\""]
+        @["-o:\"" & clueBuildTarget(pfLinux, outDir, cfg.name) & "\""]
       else:
         composeNimArgs(pfLinux, cfg, "", outDir, release)
     let cmd = pkgman & " build " & join(nimArgs, " ") & forwardExtras()
@@ -155,8 +188,13 @@ proc buildCommand*(v: Values) =
           displayError(e.msg, quitProcess = true)
         except OSError as e:
           displayError(e.msg, quitProcess = true)
-    writeFile(appBundlePath(platform, outDir, cfg.name) / "Info.plist",
-      renderInfoPlist(cfg.name, cfg.ios.bundle_id, cfg.version, iconName))
+    writeFile(infoPlistPath(platform, outDir, cfg.name),
+      renderInfoPlist(cfg.name, cfg.ios.bundle_id, cfg.version, iconName,
+        isiOS = platform == pfIos))
+    if platform == pfMacos:
+      # PkgInfo marks the bundle type/creator (APPL????), like Xcode builds.
+      writeFile(contentsDirFor(platform, outDir, cfg.name) / "PkgInfo",
+        "APPL????")
 
   let bundleExe = executablePath(platform, outDir, cfg.name)
   if not fileExists(bundleExe):
@@ -293,6 +331,39 @@ proc bundleCommand*(v: Values) =
     let
       appName = appNameFrom(appBundle)
       stageDir = stagePath(parentDir(outPath), appName)
+
+    if v.has("--pkg"):
+      # installer packaging is project-driven: identifier and version come
+      # from nkit.yaml, so --pkg only works inside a project directory;
+      # plain `nkit bundle` keeps working on any .app with no config
+      var cfg = ProjectConfig()
+      try:
+        cfg = loadCurrentProject().cfg
+      except IOError:
+        displayError("nkit bundle --pkg needs a nkit.yaml for the " &
+          "package identifier and version; run it inside a project " &
+          "directory (see `nkit init`)", quitProcess = true)
+      except ValueError as e:
+        displayError(e.msg, quitProcess = true)
+      let
+        pkgPath = pkgPathFor(outPath, appName)
+        signIdentity =
+          if v.has("--sign"): v.get("--sign").getStr
+          else: ""
+      displayInfo("building installer package " & pkgPath)
+      if buildPkg(appBundle, cfg.ios.bundle_id, cfg.version, pkgPath,
+                   signIdentity) != 0:
+        displayError("pkgbuild failed to create " & pkgPath,
+          quitProcess = true)
+      let pkgLabel = pkgPath.splitPath.tail
+      for e in entries:
+        if e.label == pkgLabel:
+          displayError(pkgLabel & " is provided twice (the installer " &
+            "package and " & e.source &
+            "); the volume root cannot hold both", quitProcess = true)
+      entries.add VolumeEntry(source: pkgPath, label: pkgLabel)
+      displayInfo("added " & pkgLabel & " to the volume")
+
     displayInfo("staging " & $entries.len & " items in " & stageDir)
     discard stageVolume(stageDir, entries, not v.has("--no-applications"))
 
