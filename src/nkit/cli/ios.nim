@@ -52,11 +52,61 @@ func appBundlePath*(platform: Platform, outDir, appName: string): string =
   of pfLinux: outDirFor(platform, outDir) / appName
   else: outDirFor(platform, outDir) / (appName & ".app")
 
+func contentsDirFor*(platform: Platform, outDir, appName: string): string =
+  ## Payload directory inside the bundle. macOS uses the standard
+  ## `Contents/` layout (Finder only picks up Info.plist, the icon and
+  ## Resources from there); iOS bundles stay flat, as Apple requires.
+  if platform == pfMacos:
+    appBundlePath(platform, outDir, appName) / "Contents"
+  else:
+    appBundlePath(platform, outDir, appName)
+
 func executablePath*(platform: Platform, outDir,
-                     appName: string): string =
+                      appName: string): string =
   case platform
+  of pfMacos: contentsDirFor(platform, outDir, appName) / "MacOS" / appName
   of pfLinux: appBundlePath(platform, outDir, appName)
   else: appBundlePath(platform, outDir, appName) / appName
+
+func infoPlistPath*(platform: Platform, outDir, appName: string): string =
+  ## Where Info.plist lives: Contents/ on macOS, bundle root on iOS.
+  if platform == pfMacos:
+    contentsDirFor(platform, outDir, appName) / "Info.plist"
+  else:
+    appBundlePath(platform, outDir, appName) / "Info.plist"
+
+func defaultDesktopPlatform*(): Platform =
+  ## Host desktop target used when `nkit build`/`run` omit the platform.
+  when defined(linux):
+    pfLinux
+  else:
+    pfMacos
+
+func parsePlatform*(s: string): Platform =
+  ## Maps a CLI platform value; "" falls back to the host desktop default.
+  ## Raises ValueError on unknown values (callers turn it into a CLI error).
+  if s.len == 0:
+    return defaultDesktopPlatform()
+  case s
+  of "ios": pfIos
+  of "macos": pfMacos
+  of "linux": pfLinux
+  else:
+    raise newException(ValueError, "unsupported platform: " & s)
+
+func clueBuildTarget*(platform: Platform, outDir, appName: string): string =
+  ## Directory to hand clue via `-o:` for a build. Clue treats `-o:` as a
+  ## directory and appends the binary name itself, so it receives the
+  ## directory that will hold the executable: Contents/MacOS on macOS,
+  ## the bundle root on iOS, the plain output dir on Linux. Passing the
+  ## executable *file* path instead makes clue create it as a directory
+  ## on first build and fail on rebuilds.
+  if platform == pfMacos:
+    parentDir(executablePath(platform, outDir, appName))
+  elif platform == pfLinux:
+    outDirFor(platform, outDir)
+  else:
+    appBundlePath(platform, outDir, appName)
 
 func simulatorTriple*(cpu, minVersion: string): string =
   cpu & "-apple-ios" & minVersion & "-simulator"
@@ -133,13 +183,20 @@ proc upsertPlatformConfig*(platform: Platform, cfg: ProjectConfig,
   writeFile("config.nims", content)
 
 func renderInfoPlist*(name, bundleId, version: string,
-                      iconName = ""): string =
+                       iconName = "", isiOS = true): string =
   ## Renders a minimal Info.plist for an .app bundle. When `iconName` is
   ## given, a CFBundleIconFile entry points at Resources/<iconName>.icns.
+  ## `LSRequiresIPhoneOS` is emitted for iOS bundles only; it does not
+  ## belong in a macOS plist.
   let iconBlock =
     if iconName.len > 0:
       "    <key>CFBundleIconFile</key>\n    <string>" & iconName &
       "</string>\n"
+    else:
+      ""
+  let iosBlock =
+    if isiOS:
+      "    <key>LSRequiresIPhoneOS</key>\n    <true/>\n"
     else:
       ""
   """<?xml version="1.0" encoding="UTF-8"?>
@@ -162,12 +219,10 @@ func renderInfoPlist*(name, bundleId, version: string,
     <string>$3</string>
     <key>CFBundleVersion</key>
     <string>$3</string>
-$4    <key>LSRequiresIPhoneOS</key>
-    <true/>
-</dict>
+$4$5</dict>
 </plist>
 """.replace("$1", bundleId).replace("$2", name).replace("$3", version) .
-    replace("$4", iconBlock)
+    replace("$4", iconBlock).replace("$5", iosBlock)
 
 # --- process wrappers ------------------------------------------------------
 

@@ -48,9 +48,9 @@ suite "project config resources":
     check cfg.icon == "assets/icon/AppIcon.icns"
 
 suite "resources dir":
-  test "macos and ios bundles get a Resources dir":
+  test "macos uses Contents/Resources, ios stays flat":
     check resourcesDirFor(pfMacos, "build", "Demo") ==
-      "build" / "macos" / "Demo.app" / "Resources"
+      "build" / "macos" / "Demo.app" / "Contents" / "Resources"
     check resourcesDirFor(pfIos, "build", "Demo") ==
       "build" / "ios-simulator" / "Demo.app" / "Resources"
 

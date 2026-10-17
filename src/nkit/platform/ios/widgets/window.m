@@ -307,6 +307,8 @@ void na_window_get_background_color(uint32_t id, uint8_t* or, uint8_t* og, uint8
 
 void na_window_set_title_bar_style(uint32_t id, int s) { (void)id; (void)s; }
 int na_window_get_title_bar_style(uint32_t id) { (void)id; return 0; }
+void na_window_set_drag_region(uint32_t id, double h) { (void)id; (void)h; }
+double na_window_get_drag_region(uint32_t id) { (void)id; return 0.0; }
 void na_window_set_visual_effect(uint32_t id, int e) { (void)id; (void)e; }
 int na_window_get_visual_effect(uint32_t id) { (void)id; return 0; }
 

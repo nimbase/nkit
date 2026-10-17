@@ -252,11 +252,23 @@ void na_view_constrain_size(void* ptr, double width, double height) {
   if (!view) {
     return;
   }
+  // A dimension of 0 means "unconstrained" (matches the Linux backend,
+  // which ignores non-positive extents). Pinning width to 0 would
+  // collapse the view to an invisible sliver — e.g. sugar's
+  // textarea(placeholder, height) fixes height only.
+  if (width <= 0 && height <= 0) {
+    return;
+  }
   view.translatesAutoresizingMaskIntoConstraints = NO;
-  [NSLayoutConstraint activateConstraints:@[
-    [view.widthAnchor constraintEqualToConstant:width],
-    [view.heightAnchor constraintEqualToConstant:height],
-  ]];
+  NSMutableArray<NSLayoutConstraint*>* constraints = [NSMutableArray array];
+  if (width > 0) {
+    [constraints addObject:[view.widthAnchor constraintEqualToConstant:width]];
+  }
+  if (height > 0) {
+    [constraints
+        addObject:[view.heightAnchor constraintEqualToConstant:height]];
+  }
+  [NSLayoutConstraint activateConstraints:constraints];
 }
 
 void na_view_set_content_hugging(void* ptr, int orientation, double priority) {

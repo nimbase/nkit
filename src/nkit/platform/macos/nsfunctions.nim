@@ -182,6 +182,8 @@ proc naWindowGetBackgroundColor*(id: uint32, outR, outG, outB, outA: ptr uint8) 
 
 proc naWindowSetTitleBarStyle*(id: uint32, style: cint) {.importc: "na_window_set_title_bar_style".}
 proc naWindowGetTitleBarStyle*(id: uint32): cint {.importc: "na_window_get_title_bar_style".}
+proc naWindowSetDragRegion*(id: uint32, height: float64) {.importc: "na_window_set_drag_region".}
+proc naWindowGetDragRegion*(id: uint32): float64 {.importc: "na_window_get_drag_region".}
 proc naWindowSetVisualEffect*(id: uint32, effect: cint) {.importc: "na_window_set_visual_effect".}
 proc naWindowGetVisualEffect*(id: uint32): cint {.importc: "na_window_get_visual_effect".}
 
@@ -293,9 +295,13 @@ proc naInputSetKeyCallback*(fn: NaInputKeyFn, ctx: pointer) {.
   importc: "na_input_set_key_callback".}
 
 type NaTextAreaEventFn* = proc(widgetId: uint32, ctx: pointer) {.cdecl.}
+type NaTextAreaFocusFn* = proc(widgetId: uint32, focused: bool,
+                               ctx: pointer) {.cdecl.}
 
 proc naTextAreaSetEventCallback*(fn: NaTextAreaEventFn, ctx: pointer) {.
   importc: "na_textarea_set_event_callback".}
+proc naTextAreaSetFocusCallback*(fn: NaTextAreaFocusFn, ctx: pointer) {.
+  importc: "na_textarea_set_focus_callback".}
 proc naTextAreaCreate*(widgetId: uint32): pointer {.importc: "na_textarea_create".}
 proc naTextAreaFree*(widgetId: uint32, viewPtr: pointer) {.importc: "na_textarea_free".}
 proc naTextAreaSetText*(widgetId: uint32, viewPtr: pointer, text: cstring) {.
@@ -306,7 +312,12 @@ proc naTextAreaSetEditable*(widgetId: uint32, viewPtr: pointer, editable: bool) 
   importc: "na_textarea_set_editable".}
 proc naTextAreaIsEditable*(widgetId: uint32, viewPtr: pointer): bool {.
   importc: "na_textarea_is_editable".}
+proc naTextAreaSetAllowsUndo*(widgetId: uint32, viewPtr: pointer,
+                              allow: bool) {.
+  importc: "na_textarea_set_allows_undo".}
 proc naTextAreaFireChange*(widgetId: uint32) {.importc: "na_textarea_fire_change".}
+proc naTextAreaFireFocus*(widgetId: uint32,
+                          focused: bool) {.importc: "na_textarea_fire_focus".}
 
 type NaSwitchEventFn* = proc(widgetId: uint32, ctx: pointer) {.cdecl.}
 

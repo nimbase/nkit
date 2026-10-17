@@ -28,6 +28,7 @@ typedef struct {
   float opacity;
   unsigned char bg[4];
   int title_bar_style, visual_effect;
+  double drag_region_height;
 } WinState;
 
 static GHashTable *g_windows = NULL;
@@ -494,6 +495,14 @@ void na_window_set_visual_effect(uint32_t id, int fx) {
 int na_window_get_visual_effect(uint32_t id) {
   WinState *st = find_win(id);
   return st ? st->visual_effect : 0;
+}
+void na_window_set_drag_region(uint32_t id, double height) {
+  WinState *st = find_win(id);
+  if (st) st->drag_region_height = height;
+}
+double na_window_get_drag_region(uint32_t id) {
+  WinState *st = find_win(id);
+  return st ? st->drag_region_height : 0.0;
 }
 
 void na_window_start_dragging(uint32_t id) { (void)id; }

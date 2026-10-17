@@ -207,6 +207,10 @@ proc naWindowSetTitleBarStyle*(id: uint32, style: cint) {.
   importc: "na_window_set_title_bar_style".}
 proc naWindowGetTitleBarStyle*(id: uint32): cint {.
   importc: "na_window_get_title_bar_style".}
+proc naWindowSetDragRegion*(id: uint32, height: float64) {.
+  importc: "na_window_set_drag_region".}
+proc naWindowGetDragRegion*(id: uint32): float64 {.
+  importc: "na_window_get_drag_region".}
 proc naWindowSetVisualEffect*(id: uint32, effect: cint) {.
   importc: "na_window_set_visual_effect".}
 proc naWindowGetVisualEffect*(id: uint32): cint {.

@@ -128,6 +128,15 @@ suite "window properties":
     check w.getTitleBarStyle() == tsNormal
     w.free()
 
+  test "drag region round trip":
+    let w = newWindow()
+    check w.getDragRegionHeight() == 0.0
+    w.setDragRegionHeight(28.0)
+    check w.getDragRegionHeight() == 28.0
+    w.setDragRegionHeight(0.0)
+    check w.getDragRegionHeight() == 0.0
+    w.free()
+
   test "visual effect state stored":
     let w = newWindow()
     check w.getVisualEffect() == veNone

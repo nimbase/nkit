@@ -338,6 +338,20 @@ proc getTitleBarStyle*(w: Window): TitleBarStyle =
   else:
     tsNormal
 
+proc setDragRegionHeight*(w: Window, height: float64) =
+  ## Adds an invisible strip of `height` points along the top of the window
+  ## that drags the window (for chromeless windows with a hidden title bar).
+  ## Pass 0 to remove it. The strip draws nothing but swallows mouse clicks
+  ## in its area; on macOS the traffic lights stay clickable above it.
+  when defined(macosx) or defined(ios) or defined(linux):
+    naWindowSetDragRegion(w.nativeKey, height)
+
+proc getDragRegionHeight*(w: Window): float64 =
+  when defined(macosx) or defined(ios) or defined(linux):
+    naWindowGetDragRegion(w.nativeKey)
+  else:
+    0.0
+
 proc setHasShadow*(w: Window, hasShadow: bool) =
   when defined(macosx) or defined(ios) or defined(linux):
     naWindowSetHasShadow(w.nativeKey, hasShadow)

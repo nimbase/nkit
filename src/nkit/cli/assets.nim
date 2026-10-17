@@ -15,8 +15,13 @@ import ./ios
 ## without Xcode; only convertIconset shells out to `iconutil`.
 
 func resourcesDirFor*(platform: Platform, outDir, appName: string): string =
-  ## Bundle directory that receives assets and the app icon.
-  appBundlePath(platform, outDir, appName) / "Resources"
+  ## Bundle directory that receives assets and the app icon. On macOS this
+  ## is Contents/Resources (the only place Finder looks); iOS bundles keep
+  ## everything at the bundle root.
+  if platform == pfMacos:
+    contentsDirFor(platform, outDir, appName) / "Resources"
+  else:
+    appBundlePath(platform, outDir, appName) / "Resources"
 
 proc resolveInside(projectDir, entry: string): string =
   ## Resolves a yaml-declared path against the project root, rejecting

@@ -134,9 +134,14 @@ void na_view_constrain_fill_superview(void* child_ptr,
 void na_view_constrain_size(void* view_ptr, double width, double height) {
   UIView* view = (__bridge UIView*)view_ptr;
   if (view) {
+    // A dimension of 0 means "unconstrained" (matches the other backends).
     CGRect f = view.frame;
-    f.size.width = width;
-    f.size.height = height;
+    if (width > 0) {
+      f.size.width = width;
+    }
+    if (height > 0) {
+      f.size.height = height;
+    }
     view.frame = f;
   }
 }

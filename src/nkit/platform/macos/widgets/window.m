@@ -16,6 +16,8 @@ static NSMutableDictionary<NSValue*, NSNumber*>* g_ids_by_object = nil;
 static NSMutableDictionary<NSNumber*, NSVisualEffectView*>* g_effect_views = nil;
 static NSMutableDictionary<NSNumber*, NSNumber*>* g_title_bar_styles = nil;
 static NSMutableDictionary<NSNumber*, NSNumber*>* g_visual_effects = nil;
+static NSMutableDictionary<NSNumber*, NSView*>* g_drag_views = nil;
+static NSMutableDictionary<NSNumber*, NSNumber*>* g_drag_region_heights = nil;
 
 static uint32_t g_next_sequence = 0;
 
@@ -28,6 +30,8 @@ static void ensure_tables(void) {
     g_effect_views = [NSMutableDictionary dictionary];
     g_title_bar_styles = [NSMutableDictionary dictionary];
     g_visual_effects = [NSMutableDictionary dictionary];
+    g_drag_views = [NSMutableDictionary dictionary];
+    g_drag_region_heights = [NSMutableDictionary dictionary];
   }
 }
 
@@ -596,6 +600,83 @@ int na_window_get_title_bar_style(uint32_t id) {
   ensure_tables();
   NSNumber* style = g_title_bar_styles[@(id)];
   return style ? style.intValue : 0;
+}
+
+@interface NADragHandleView : NSView
+@property(nonatomic, weak) NSWindow* targetWindow;
+@end
+
+@implementation NADragHandleView
+// Transparent and non-opaque: draws nothing, stays invisible.
+- (BOOL)isOpaque {
+  return NO;
+}
+- (void)drawRect:(NSRect)dirtyRect {
+  (void)dirtyRect;
+}
+- (void)mouseDown:(NSEvent*)event {
+  if (_targetWindow) {
+    [_targetWindow performWindowDragWithEvent:event];
+  } else {
+    [super mouseDown:event];
+  }
+}
+@end
+
+void na_window_set_drag_region(uint32_t id, double height) {
+  NSWindow* window = window_for(id);
+  if (!window) return;
+  ensure_tables();
+  g_drag_region_heights[@(id)] = @(height);
+  NSView* old = g_drag_views[@(id)];
+  if (height <= 0.0) {
+    [old removeFromSuperview];
+    [g_drag_views removeObjectForKey:@(id)];
+    return;
+  }
+  // Host the strip in the titlebar container, not the content view: the
+  // container permanently floats above the content (layout re-attaches
+  // content subviews on every resize, which would bury a content sibling
+  // under the WebView). Positioned below the existing subviews so the
+  // traffic lights stay clickable.
+  NSButton* closeButton = [window standardWindowButton:NSWindowCloseButton];
+  NSView* host = closeButton.superview.superview;
+  if (!host) {
+    host = window.contentView;
+  }
+  if (!host) return;
+  NSRect b = host.bounds;
+  NSRect f = NSMakeRect(0, b.size.height - height, b.size.width, height);
+  if (f.size.height > b.size.height) {
+    f = host.bounds;
+  }
+  NADragHandleView* view = (NADragHandleView*)old;
+  if (![view isKindOfClass:[NADragHandleView class]]) {
+    if (old) {
+      [old removeFromSuperview];
+    }
+    view = [[NADragHandleView alloc] initWithFrame:f];
+    view.wantsLayer = YES;
+    view.layer.backgroundColor = [[NSColor clearColor] CGColor];
+    g_drag_views[@(id)] = view;
+  } else {
+    if (view.superview != host) {
+      [view removeFromSuperview];
+    }
+    view.frame = f;
+  }
+  view.targetWindow = window;
+  // Track the host across resizes.
+  view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+  if (view.superview != host) {
+    [host addSubview:view positioned:NSWindowBelow relativeTo:nil];
+  }
+}
+
+double na_window_get_drag_region(uint32_t id) {
+  ensure_tables();
+  NSNumber* height = g_drag_region_heights[@(id)];
+  return height ? height.doubleValue : 0.0;
 }
 
 void na_window_set_visual_effect(uint32_t id, int effect) {

@@ -167,6 +167,21 @@ suite "textarea":
     discard runMainThreadLoopFor(100)
     check changes == 1
 
+  test "focus and blur events fire":
+    let ta = newTextArea()
+    var focused = 0
+    var blurred = 0
+    discard onFocus(ta, proc(e: TextAreaFocusEvent) =
+      inc focused)
+    discard onBlur(ta, proc(e: TextAreaBlurEvent) =
+      inc blurred)
+    fireFocus(ta, true)
+    discard runMainThreadLoopFor(100)
+    fireFocus(ta, false)
+    discard runMainThreadLoopFor(100)
+    check focused == 1
+    check blurred == 1
+
 suite "switch":
   test "state toggles":
     let sw = newSwitch(false)

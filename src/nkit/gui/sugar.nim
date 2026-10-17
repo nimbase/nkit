@@ -202,11 +202,13 @@ proc search*(placeholder = "", isEditable = true): ViewNode =
 
 proc textarea*(placeholder = "", height = 90.0,
                isEditable = true): ViewNode =
-  ## A multi-line text area.
+  ## A multi-line text area with a fixed solver height; the width comes
+  ## from the parent (stretched in columns). Sized with `sizedBox`, not
+  ## `constrainSize`: a native width constraint would fight the solver
+  ## frames, and width 0 would collapse the view to a sliver.
   let ta = newTextArea(placeholder)
-  constrainSize(ta, 0.0, height)
   setEditable(ta, isEditable)
-  toNode(ta)
+  sizedBox(height = height, child = toNode(ta))
 
 # ---------------------------------------------------------------------------
 # Switch, slider, progress
@@ -629,6 +631,18 @@ proc onChanged*(n: ViewNode,
   ## Wires a change handler on a TextArea node.
   doAssert n.view of TextArea, "onChanged target is not a textarea"
   onChanged(TextArea(n.view), handler)
+
+proc onFocus*(n: ViewNode,
+              handler: proc(e: TextAreaFocusEvent)): ListenerId =
+  ## Wires a focus handler on a TextArea node.
+  doAssert n.view of TextArea, "onFocus target is not a textarea"
+  onFocus(TextArea(n.view), handler)
+
+proc onBlur*(n: ViewNode,
+             handler: proc(e: TextAreaBlurEvent)): ListenerId =
+  ## Wires a blur handler on a TextArea node.
+  doAssert n.view of TextArea, "onBlur target is not a textarea"
+  onBlur(TextArea(n.view), handler)
 
 proc onChanged*(n: ViewNode,
                 handler: proc(e: DateChangedEvent)): ListenerId =

@@ -59,6 +59,13 @@ type
     flex*: float64
     cached*: Size
     frame*: Rectangle
+    collapsed*: bool
+      ## When true the node (and its subtree) takes no space: measure
+      ## reports zero without measuring children, placement is skipped,
+      ## and no inter-child spacing is reserved. Pair with a native
+      ## `setHidden(true)` on the backing view. Useful for toggling
+      ## detail sections without rebuilding the tree; re-run
+      ## `applyLayout` on the owning root after flipping the flag.
 
 proc insetsAll*(all: float64): Insets {.inline.} =
   Insets(left: all, top: all, right: all, bottom: all)
@@ -210,6 +217,9 @@ proc newMargin*(child: LayoutNode, left: float64, top: float64, right: float64,
     result.children.add(child)
 
 proc measure*(n: LayoutNode, maxWidth: float64, maxHeight: float64): Size =
+  if n.collapsed:
+    n.cached = size(0.0, 0.0)
+    return n.cached
   case n.kind
   of likLeaf:
     # A leaf with children is a scroll view: the document child measures
@@ -252,25 +262,31 @@ proc measure*(n: LayoutNode, maxWidth: float64, maxHeight: float64): Size =
   of likRow:
     var main = 0.0
     var cross = 0.0
+    var vis = 0
     for c in n.children:
+      if c.collapsed: continue
       discard measure(c, maxWidth, maxHeight)
       if not c.isFlex():
         main += c.cached.width
       cross = max(cross, c.cached.height)
-    if n.children.len > 1:
-      main += n.spacing * float64(n.children.len - 1)
+      inc vis
+    if vis > 1:
+      main += n.spacing * float64(vis - 1)
     n.cached = size(max(main, 0.0), cross + 0.0)
     result = n.cached
   of likColumn:
     var main = 0.0
     var cross = 0.0
+    var vis = 0
     for c in n.children:
+      if c.collapsed: continue
       discard measure(c, maxWidth, maxHeight)
       if not c.isFlex():
         main += c.cached.height
       cross = max(cross, c.cached.width)
-    if n.children.len > 1:
-      main += n.spacing * float64(n.children.len - 1)
+      inc vis
+    if vis > 1:
+      main += n.spacing * float64(vis - 1)
     n.cached = size(cross + 0.0, max(main, 0.0))
     result = n.cached
 
@@ -334,6 +350,8 @@ proc crossExtent*(crossAlign: CrossAxisAlignment, innerCross: float64,
 proc place*(n: LayoutNode, rect: Rectangle, parentSize: Size)
 
 proc placeChildren*(n: LayoutNode, rect: Rectangle, parentSize: Size) =
+  if n.collapsed:
+    return
   case n.kind
   of likLeaf:
     # Scroll-view leaf: lay the document out at viewport width and full
@@ -366,18 +384,21 @@ proc placeChildren*(n: LayoutNode, rect: Rectangle, parentSize: Size) =
     let i = n.insets
     let innerW = max(rect.width - i.insH(), 0.0)
     let innerH = max(rect.height - i.insV(), 0.0)
-    let count = n.children.len
+    var order: seq[LayoutNode] = @[]
+    for c in n.children:
+      if not c.collapsed: order.add(c)
+    let count = order.len
     if count == 0:
       return
     var sizes: seq[float64] = @[]
     var flexes: seq[float64] = @[]
-    for c in n.children:
+    for c in order:
       sizes.add(c.cached.width)
       flexes.add(c.flex)
     let (leading, between) = distributeMain(innerW, sizes, flexes, n.spacing, n.mainAlign)
     var cursor = i.left + leading
     for idx in 0 ..< count:
-      let c = n.children[idx]
+      let c = order[idx]
       let ce = crossExtent(n.crossAlign, innerH, c.cached.height)
       let childRect = rectangle(cursor, i.top + ce.offset, sizes[idx], ce.extent)
       place(c, childRect, size(rect.width, rect.height))
@@ -386,18 +407,21 @@ proc placeChildren*(n: LayoutNode, rect: Rectangle, parentSize: Size) =
     let i = n.insets
     let innerW = max(rect.width - i.insH(), 0.0)
     let innerH = max(rect.height - i.insV(), 0.0)
-    let count = n.children.len
+    var order: seq[LayoutNode] = @[]
+    for c in n.children:
+      if not c.collapsed: order.add(c)
+    let count = order.len
     if count == 0:
       return
     var sizes: seq[float64] = @[]
     var flexes: seq[float64] = @[]
-    for c in n.children:
+    for c in order:
       sizes.add(c.cached.height)
       flexes.add(c.flex)
     let (leading, between) = distributeMain(innerH, sizes, flexes, n.spacing, n.mainAlign)
     var cursor = i.top + leading
     for idx in 0 ..< count:
-      let c = n.children[idx]
+      let c = order[idx]
       let ce = crossExtent(n.crossAlign, innerW, c.cached.width)
       let childRect = rectangle(i.left + ce.offset, cursor, ce.extent, sizes[idx])
       place(c, childRect, size(rect.width, rect.height))

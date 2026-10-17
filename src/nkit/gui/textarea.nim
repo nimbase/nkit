@@ -17,14 +17,30 @@ type
   TextAreaChangedEvent* = ref object of GuiEvent
     textAreaId*: Id
 
+  TextAreaFocusEvent* = ref object of GuiEvent
+    textAreaId*: Id
+
+  TextAreaBlurEvent* = ref object of GuiEvent
+    textAreaId*: Id
+
   TextArea* = ref object of View
 
 var liveTextAreas: Table[uint32, TextArea]
 
 method typeName(e: TextAreaChangedEvent): string = "TextAreaChangedEvent"
+method typeName(e: TextAreaFocusEvent): string = "TextAreaFocusEvent"
+method typeName(e: TextAreaBlurEvent): string = "TextAreaBlurEvent"
 
 proc newTextAreaChangedEvent*(textAreaId: Id): TextAreaChangedEvent =
   result = TextAreaChangedEvent(textAreaId: textAreaId)
+  discard stamp(result)
+
+proc newTextAreaFocusEvent*(textAreaId: Id): TextAreaFocusEvent =
+  result = TextAreaFocusEvent(textAreaId: textAreaId)
+  discard stamp(result)
+
+proc newTextAreaBlurEvent*(textAreaId: Id): TextAreaBlurEvent =
+  result = TextAreaBlurEvent(textAreaId: textAreaId)
   discard stamp(result)
 
 when defined(macosx) or defined(ios) or defined(linux):
@@ -33,7 +49,17 @@ when defined(macosx) or defined(ios) or defined(linux):
     if not ta.isNil:
       emitAsync(ta, newTextAreaChangedEvent(ta.id))
 
+  proc textAreaFocusTrampoline(widgetId: uint32, focused: bool,
+                               ctx: pointer) {.cdecl.} =
+    let ta = liveTextAreas.getOrDefault(widgetId)
+    if ta.isNil: return
+    if focused:
+      emitAsync(ta, newTextAreaFocusEvent(ta.id))
+    else:
+      emitAsync(ta, newTextAreaBlurEvent(ta.id))
+
 var textAreaCallbacksArmed = false
+var textAreaFocusArmed = false
 
 proc ensureTextAreaCallbacks*() =
   when defined(macosx) or defined(ios) or defined(linux):
@@ -41,8 +67,15 @@ proc ensureTextAreaCallbacks*() =
       naTextAreaSetEventCallback(textAreaEventTrampoline, nil)
       textAreaCallbacksArmed = true
 
+proc ensureTextAreaFocusCallbacks*() =
+  when defined(macosx):
+    if not textAreaFocusArmed:
+      naTextAreaSetFocusCallback(textAreaFocusTrampoline, nil)
+      textAreaFocusArmed = true
+
 proc newTextArea*(text = ""): TextArea =
   ensureTextAreaCallbacks()
+  ensureTextAreaFocusCallbacks()
   let vid = allocate(typeTagGuiWidget)
   when defined(macosx) or defined(ios) or defined(linux):
     let nativePtr = naTextAreaCreate(vid.uint32)
@@ -82,10 +115,28 @@ proc isEditable*(ta: TextArea): bool =
   else:
     false
 
+proc setAllowsUndo*(ta: TextArea, allow: bool) =
+  ## Toggles the built-in per-keystroke text undo. Disable it when the
+  ## app manages undo itself (e.g. at model level) so the two histories
+  ## can't fight over the same keystrokes. No-op off macOS for now.
+  when defined(macosx):
+    naTextAreaSetAllowsUndo(ta.nativeKey, ta.native, allow)
+
 proc onChanged*(ta: TextArea, handler: proc(e: TextAreaChangedEvent)): ListenerId =
   addListener[GuiEvent, TextAreaChangedEvent](ta, handler)
+
+proc onFocus*(ta: TextArea, handler: proc(e: TextAreaFocusEvent)): ListenerId =
+  addListener[GuiEvent, TextAreaFocusEvent](ta, handler)
+
+proc onBlur*(ta: TextArea, handler: proc(e: TextAreaBlurEvent)): ListenerId =
+  addListener[GuiEvent, TextAreaBlurEvent](ta, handler)
 
 proc fireChange*(ta: TextArea) =
   ## Full-stack test hook.
   when defined(macosx) or defined(ios) or defined(linux):
     naTextAreaFireChange(ta.nativeKey)
+
+proc fireFocus*(ta: TextArea, focused: bool) =
+  ## Full-stack test hook: drives the focus/blur event path.
+  when defined(macosx):
+    naTextAreaFireFocus(ta.nativeKey, focused)
